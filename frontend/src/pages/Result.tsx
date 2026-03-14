@@ -105,10 +105,10 @@ function formatScore(score: number): string {
 }
 
 function scoreLabel(score: number): { emoji: string; label: string; colorClass: string } {
-  if (score >= 2000) return { emoji: '🤖', label: 'Pure Vibe Coding',   colorClass: 'text-red-400' }
-  if (score >= 500)  return { emoji: '🤖', label: 'Heavy AI Assist',    colorClass: 'text-orange-400' }
-  if (score >= 100)  return { emoji: '🤝', label: 'Mixed Vibes',        colorClass: 'text-yellow-400' }
-  return               { emoji: '👨‍💻', label: 'Mostly Human',          colorClass: 'text-emerald-400' }
+  if (score >= 2000) return { emoji: '🤖', label: t.labelPureVibe,   colorClass: 'text-red-400' }
+  if (score >= 500)  return { emoji: '🤖', label: t.labelHeavyAI,    colorClass: 'text-orange-400' }
+  if (score >= 100)  return { emoji: '🤝', label: t.labelMixed,        colorClass: 'text-yellow-400' }
+  return               { emoji: '👨‍💻', label: t.labelMostlyHuman,          colorClass: 'text-emerald-400' }
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -131,13 +131,13 @@ function ScoreDisplay({ score }: { score: number }) {
 function BreakdownBar({ result }: { result: AnalysisResult }) {
   const { breakdown } = result
   const entries = [
-    { label: 'Line Volume',    value: breakdown.lineVolume,    color: 'bg-emerald-600' },
-    { label: 'Burst Speed',    value: breakdown.burstSignals,  color: 'bg-amber-500' },
-    { label: 'Window Speed',   value: breakdown.windowSpeed,   color: 'bg-orange-500' },
-    { label: 'Fix→Fix',        value: breakdown.fixFix,        color: 'bg-yellow-500' },
-    { label: 'Co-authored',    value: breakdown.coauthored,    color: 'bg-purple-500' },
-    { label: 'Rapid Commits',  value: breakdown.rapidCommits,  color: 'bg-blue-500' },
-    { label: 'CI Failures',    value: breakdown.ciFailures,    color: 'bg-red-500' },
+    { label: t.barLineVol,    value: breakdown.lineVolume,    color: 'bg-emerald-600' },
+    { label: t.barBurst,    value: breakdown.burstSignals,  color: 'bg-amber-500' },
+    { label: t.barWindow,   value: breakdown.windowSpeed,   color: 'bg-orange-500' },
+    { label: t.barFixFix,        value: breakdown.fixFix,        color: 'bg-yellow-500' },
+    { label: t.barCoauthor,    value: breakdown.coauthored,    color: 'bg-purple-500' },
+    { label: t.barRapid,  value: breakdown.rapidCommits,  color: 'bg-blue-500' },
+    { label: t.barCI,    value: breakdown.ciFailures,    color: 'bg-red-500' },
   ].filter((e) => e.value > 0)
 
   const total = entries.reduce((s, e) => s + e.value, 0)
@@ -145,7 +145,7 @@ function BreakdownBar({ result }: { result: AnalysisResult }) {
 
   return (
     <div>
-      <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">Score Breakdown</h2>
+      <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">{t.scoreBreakdown}</h2>
       <div className="flex rounded-lg overflow-hidden h-4 mb-3">
         {entries.map((e) => (
           <div
@@ -176,7 +176,7 @@ function TimelineChart({ timeline }: { timeline: AnalysisResult['timeline'] }) {
 
   return (
     <div>
-      <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">Commit Timeline</h2>
+      <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">{t.commitTimeline}</h2>
       <div className="flex items-end gap-0.5 h-16">
         {shown.map((bucket) => {
           const height = Math.max(3, (bucket.commits / maxCommits) * 64)
@@ -574,7 +574,7 @@ export default function Result() {
             </button>
           )}
           <button onClick={handleShare} className="btn-secondary text-sm py-1.5">
-            {copied ? '✅ Copied!' : '🔗 Share'}
+            {copied ? t.copied : t.share}
           </button>
           <Link to="/leaderboard" className="btn-secondary text-sm py-1.5">🏆</Link>
         </div>

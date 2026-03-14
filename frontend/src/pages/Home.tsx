@@ -154,15 +154,23 @@ export default function Home() {
             ))}
           </div>
           <Link to="/stats" className="text-gray-400 hover:text-gray-200 text-sm transition-colors">
-            📊 Stats
+            {t.stats}
           </Link>
           <Link to="/leaderboard" className="text-gray-400 hover:text-gray-200 text-sm transition-colors">
             {t.leaderboard}
           </Link>
           {user ? (
             <div className="flex items-center gap-2">
-              <img src={user.avatar_url} alt={user.login} className="w-7 h-7 rounded-full" />
-              <span className="text-sm text-gray-300">{user.login}</span>
+              <a
+                href={`https://github.com/${user.login}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                title={`@${user.login} on GitHub`}
+              >
+                <img src={user.avatar_url} alt={user.login} className="w-7 h-7 rounded-full ring-1 ring-gray-700 hover:ring-emerald-500 transition-all" />
+                <span className="text-sm text-gray-300">{user.login}</span>
+              </a>
               <button
                 onClick={handleLogout}
                 className="text-xs text-gray-500 hover:text-gray-300 transition-colors ml-1"

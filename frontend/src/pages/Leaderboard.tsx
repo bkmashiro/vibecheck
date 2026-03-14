@@ -68,7 +68,7 @@ export default function Leaderboard() {
             <h2 className="text-2xl font-bold text-gray-100">{t.mostVibed}</h2>
             {currentVersion && (
               <p className="text-gray-500 text-sm mt-1">
-                Scoring: <span className="text-emerald-400">{currentVersion.label}</span>
+                {t.scoringLabel} <span className="text-emerald-400">{currentVersion.label}</span>
                 {currentVersion.description && (
                   <span className="text-gray-600"> — {currentVersion.description}</span>
                 )}
