@@ -646,17 +646,14 @@ export default function Result() {
         <div className="card bg-gray-900/50">
           <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">{t.aboutScore}</h2>
           <p className="text-gray-400 text-sm leading-relaxed">
-            The score is <strong className="text-gray-200">unbounded</strong> — it accumulates for
-            every AI signal found. A massive AI-written monorepo will score in the tens of thousands.
-            Signals include typing-speed analysis, co-authorship tags, fix→fix cycles, CI failure
-            chains, and raw line volume.
+            {t.aboutScoreText}
           </p>
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
             {[
-              { sig: 'Co-authored-by', pts: '+200/commit' },
-              { sig: 'Fix→Fix cycle', pts: '+50/pair' },
-              { sig: 'CI failure fix', pts: '+30/commit' },
-              { sig: 'Line volume', pts: '+0.05/line' },
+              { sig: t.sigCoAuthor,  pts: '+200/commit' },
+              { sig: t.sigFixFix,    pts: '+50/pair' },
+              { sig: t.sigCiFail,    pts: '+30/commit' },
+              { sig: t.sigLineVol,   pts: '+0.05/line' },
             ].map((s) => (
               <div key={s.sig} className="bg-gray-800 rounded px-2 py-1.5 text-center">
                 <div className="text-gray-300 font-semibold">{s.pts}</div>
@@ -668,7 +665,7 @@ export default function Result() {
 
         <div className="text-center">
           <p className="text-gray-700 text-xs">
-            Analyzed {new Date(result.analyzedAt).toLocaleString()}
+            {t.analyzedAt} {new Date(result.analyzedAt).toLocaleString()}
           </p>
         </div>
       </main>
