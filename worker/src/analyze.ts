@@ -8,22 +8,41 @@ export interface CommitData {
 }
 
 export interface VibeSignal {
-  type: 'burst_speed' | 'window_speed' | 'fix_fix' | 'coauthored' | 'rapid_commits'
+  type:
+    | 'burst_speed'
+    | 'window_speed'
+    | 'fix_fix'
+    | 'coauthored'
+    | 'rapid_commits'
+    | 'ci_failure'
+    | 'line_volume'
   score: number
   description: string
   commitSha?: string
 }
 
 export interface AnalysisResult {
-  overallScore: number
+  score: number           // unbounded raw float
   signals: VibeSignal[]
   timeline: { hour: string; score: number; commits: number }[]
   commitCount: number
   latestSha: string
   analyzedAt: number
+  // breakdown for display
+  breakdown: ScoreBreakdown
 }
 
-// ── GitHub GraphQL ────────────────────────────────────────────────────────────
+export interface ScoreBreakdown {
+  burstSignals: number
+  lineVolume: number
+  windowSpeed: number
+  fixFix: number
+  coauthored: number
+  rapidCommits: number
+  ciFailures: number
+}
+
+// ── GitHub GraphQL ─────────────────────────────────────────────────────────────
 
 const COMMITS_QUERY = `
 query($owner: String!, $repo: String!, $cursor: String) {
@@ -74,11 +93,21 @@ interface GQLResponse {
   errors?: Array<{ message: string }>
 }
 
+export interface RateLimitInfo {
+  remaining: number
+  resetsAt: number // unix seconds
+}
+
+export interface FetchResult {
+  commits: CommitData[]
+  rateLimit: RateLimitInfo
+}
+
 export async function fetchCommitsGraphQL(
   owner: string,
   repo: string,
   token: string
-): Promise<CommitData[]> {
+): Promise<FetchResult> {
   const res = await fetch('https://api.github.com/graphql', {
     method: 'POST',
     headers: {
@@ -92,8 +121,20 @@ export async function fetchCommitsGraphQL(
     }),
   })
 
+  // Parse rate limit headers
+  const remaining = parseInt(res.headers.get('X-RateLimit-Remaining') ?? '9999', 10)
+  const resetsAt = parseInt(res.headers.get('X-RateLimit-Reset') ?? '0', 10)
+  const rateLimit: RateLimitInfo = { remaining, resetsAt }
+
   if (!res.ok) {
     throw new Error(`GitHub GraphQL error ${res.status}: ${await res.text()}`)
+  }
+
+  // Check rate limit BEFORE processing (so the caller can return 429 promptly)
+  if (remaining < 10) {
+    const err: any = new Error('rate_limit')
+    err.rateLimit = rateLimit
+    throw err
   }
 
   const gql: GQLResponse = await res.json()
@@ -107,7 +148,7 @@ export async function fetchCommitsGraphQL(
     throw new Error('Repository not found or has no commits on default branch')
   }
 
-  return history.nodes.map((node) => ({
+  const commits: CommitData[] = history.nodes.map((node) => ({
     sha: node.oid,
     timestamp: new Date(node.committedDate).getTime(),
     message: node.message,
@@ -115,26 +156,38 @@ export async function fetchCommitsGraphQL(
     deletions: node.deletions,
     author: node.author.name || node.author.email || 'unknown',
   }))
+
+  return { commits, rateLimit }
 }
 
-// ── Vibe Analysis ─────────────────────────────────────────────────────────────
+// ── Vibe Analysis ──────────────────────────────────────────────────────────────
+
+const CI_FAILURE_PATTERNS = ['fix ci', 'fix build', 'fix test', 'fix workflow', 'fix: ci', 'fix: build', 'fix: test']
+
+function isCiFailureCommit(message: string): boolean {
+  const lower = message.toLowerCase()
+  return CI_FAILURE_PATTERNS.some((p) => lower.includes(p))
+}
 
 function deduplicateSignals(signals: VibeSignal[]): VibeSignal[] {
-  const bySha = new Map<string, VibeSignal>()
-  const noSha: VibeSignal[] = []
+  // For signals with a sha: keep highest-score per sha per type
+  // For signals without sha (line_volume, window_speed aggregates): keep all
+  const byShaType = new Map<string, VibeSignal>()
+  const other: VibeSignal[] = []
 
   for (const sig of signals) {
     if (!sig.commitSha) {
-      noSha.push(sig)
+      other.push(sig)
       continue
     }
-    const existing = bySha.get(sig.commitSha)
+    const key = `${sig.commitSha}:${sig.type}`
+    const existing = byShaType.get(key)
     if (!existing || sig.score > existing.score) {
-      bySha.set(sig.commitSha, sig)
+      byShaType.set(key, sig)
     }
   }
 
-  return [...bySha.values(), ...noSha]
+  return [...byShaType.values(), ...other]
 }
 
 function buildTimeline(
@@ -169,18 +222,48 @@ function buildTimeline(
 export function analyzeVibe(commits: CommitData[]): AnalysisResult {
   if (commits.length === 0) {
     return {
-      overallScore: 0,
+      score: 0,
       signals: [],
       timeline: [],
       commitCount: 0,
       latestSha: '',
       analyzedAt: Date.now(),
+      breakdown: {
+        burstSignals: 0,
+        lineVolume: 0,
+        windowSpeed: 0,
+        fixFix: 0,
+        coauthored: 0,
+        rapidCommits: 0,
+        ciFailures: 0,
+      },
     }
   }
 
   commits.sort((a, b) => a.timestamp - b.timestamp)
 
   const signals: VibeSignal[] = []
+  const breakdown: ScoreBreakdown = {
+    burstSignals: 0,
+    lineVolume: 0,
+    windowSpeed: 0,
+    fixFix: 0,
+    coauthored: 0,
+    rapidCommits: 0,
+    ciFailures: 0,
+  }
+
+  // ── Line volume: total insertions × 0.05 ────────────────────────────────────
+  const totalInsertions = commits.reduce((s, c) => s + c.insertions, 0)
+  const lineVolumeScore = totalInsertions * 0.05
+  breakdown.lineVolume = lineVolumeScore
+  if (totalInsertions > 0) {
+    signals.push({
+      type: 'line_volume',
+      score: lineVolumeScore,
+      description: `${totalInsertions.toLocaleString()} total lines added (×0.05)`,
+    })
+  }
 
   for (let i = 1; i < commits.length; i++) {
     const curr = commits[i]
@@ -189,44 +272,50 @@ export function analyzeVibe(commits: CommitData[]): AnalysisResult {
 
     if (dtMinutes <= 0) continue
 
-    // Signal 1: Instant typing speed (lines added vs time)
+    // ── Signal: Instant typing speed ──────────────────────────────────────────
     const instantSpeed = curr.insertions / dtMinutes
     if (instantSpeed > 500) {
+      const pts = 40
+      breakdown.burstSignals += pts
       signals.push({
         type: 'burst_speed',
-        score: 40,
-        description: `${curr.insertions} lines in ${dtMinutes.toFixed(1)} min (${Math.round(
-          instantSpeed
-        )} lines/min)`,
+        score: pts,
+        description: `${curr.insertions} lines in ${dtMinutes.toFixed(1)} min (${Math.round(instantSpeed)} lines/min)`,
         commitSha: curr.sha,
       })
     } else if (instantSpeed > 200) {
+      const pts = 20
+      breakdown.burstSignals += pts
       signals.push({
         type: 'burst_speed',
-        score: 20,
-        description: `${curr.insertions} lines in ${dtMinutes.toFixed(1)} min`,
+        score: pts,
+        description: `${curr.insertions} lines in ${dtMinutes.toFixed(1)} min (${Math.round(instantSpeed)} lines/min)`,
         commitSha: curr.sha,
       })
     } else if (instantSpeed > 100) {
+      const pts = 10
+      breakdown.burstSignals += pts
       signals.push({
         type: 'burst_speed',
-        score: 10,
-        description: `Fast burst detected`,
+        score: pts,
+        description: `Fast burst: ${curr.insertions} lines in ${dtMinutes.toFixed(1)} min`,
         commitSha: curr.sha,
       })
     }
 
-    // Signal 2: Rapid commits (< 2 min apart) with substantial code
+    // ── Signal: Rapid commits (<2 min) with substantial code ──────────────────
     if (dtMinutes < 2 && curr.insertions > 30) {
+      const pts = 15
+      breakdown.rapidCommits += pts
       signals.push({
         type: 'rapid_commits',
-        score: 15,
-        description: `Large commit ${dtMinutes.toFixed(1)} min after previous`,
+        score: pts,
+        description: `${curr.insertions} lines committed ${dtMinutes.toFixed(1)} min after previous`,
         commitSha: curr.sha,
       })
     }
 
-    // Signal 3: fix-fix pattern
+    // ── Signal: fix-fix pattern ────────────────────────────────────────────────
     const prevMsg = prev.message.toLowerCase()
     const currMsg = curr.message.toLowerCase()
     if (
@@ -234,26 +323,42 @@ export function analyzeVibe(commits: CommitData[]): AnalysisResult {
       (currMsg.startsWith('fix') || currMsg.includes('fix:')) &&
       dtMinutes < 10
     ) {
+      const pts = 50
+      breakdown.fixFix += pts
       signals.push({
         type: 'fix_fix',
-        score: 10,
-        description: `fix-fix pattern in ${dtMinutes.toFixed(1)} min`,
+        score: pts,
+        description: `fix→fix in ${dtMinutes.toFixed(1)} min`,
         commitSha: curr.sha,
       })
     }
 
-    // Signal 4: Co-authored-by
+    // ── Signal: Co-authored-by ─────────────────────────────────────────────────
     if (curr.message.toLowerCase().includes('co-authored-by')) {
+      const pts = 200
+      breakdown.coauthored += pts
       signals.push({
         type: 'coauthored',
-        score: 30,
-        description: 'AI co-author attribution in commit',
+        score: pts,
+        description: 'AI co-author attribution in commit message',
+        commitSha: curr.sha,
+      })
+    }
+
+    // ── Signal: CI failure hints ───────────────────────────────────────────────
+    if (isCiFailureCommit(curr.message)) {
+      const pts = 30
+      breakdown.ciFailures += pts
+      signals.push({
+        type: 'ci_failure',
+        score: pts,
+        description: `CI/build failure fix: "${curr.message.split('\n')[0].slice(0, 60)}"`,
         commitSha: curr.sha,
       })
     }
   }
 
-  // Signal 5: 30-minute sliding window speed
+  // ── Signal: 30-min sliding window speed ───────────────────────────────────
   for (let i = 0; i < commits.length; i++) {
     const windowEnd = commits[i].timestamp
     const windowStart = windowEnd - 30 * 60 * 1000
@@ -261,34 +366,38 @@ export function analyzeVibe(commits: CommitData[]): AnalysisResult {
       (c) => c.timestamp >= windowStart && c.timestamp <= windowEnd
     )
     const totalLines = windowCommits.reduce((s, c) => s + c.insertions, 0)
-    const windowSpeed = totalLines / 30
+    const windowSpeed = totalLines / 30 // lines/min
 
     if (windowSpeed > 300 && windowCommits.length >= 3) {
+      const pts = 30
+      breakdown.windowSpeed += pts
       signals.push({
         type: 'window_speed',
-        score: 30,
-        description: `${totalLines} lines added in 30-min window (${Math.round(
-          windowSpeed
-        )}/min)`,
+        score: pts,
+        description: `${totalLines.toLocaleString()} lines in 30-min window (${Math.round(windowSpeed)}/min)`,
         commitSha: commits[i].sha,
       })
     }
   }
 
   const deduped = deduplicateSignals(signals)
-  const rawScore = deduped.reduce((s, sig) => s + sig.score, 0)
-  const overallScore = Math.min(100, Math.round((rawScore / commits.length) * 10))
-  const timeline = buildTimeline(commits, deduped)
 
-  // latest SHA (most recent commit after sort)
+  // Total score = sum of all signal scores (unbounded)
+  const score = deduped.reduce((s, sig) => s + sig.score, 0)
+
+  // Sort signals by score desc for display
+  const sortedSignals = [...deduped].sort((a, b) => b.score - a.score)
+
+  const timeline = buildTimeline(commits, deduped)
   const latestSha = commits[commits.length - 1].sha
 
   return {
-    overallScore,
-    signals: deduped.slice(0, 20),
+    score,
+    signals: sortedSignals.slice(0, 20),
     timeline,
     commitCount: commits.length,
     latestSha,
     analyzedAt: Date.now(),
+    breakdown,
   }
 }

@@ -1,62 +1,125 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { analyzeRepo, AuthRequiredError, getLoginUrl, type AnalysisResult, type VibeSignal } from '../lib/api'
+import {
+  analyzeRepo,
+  enrollRepo,
+  AuthRequiredError,
+  RateLimitError,
+  getLoginUrl,
+  type AnalysisResult,
+  type VibeSignal,
+} from '../lib/api'
 
-const SIGNAL_LABELS: Record<VibeSignal['type'], string> = {
-  burst_speed: '⚡ Burst Speed',
-  window_speed: '📈 Window Speed',
-  fix_fix: '🔄 Fix-Fix Pattern',
-  coauthored: '🤝 AI Co-author',
-  rapid_commits: '💨 Rapid Commits',
+// ── Signal labels ──────────────────────────────────────────────────────────────
+
+const SIGNAL_META: Record<VibeSignal['type'], { label: string; color: string }> = {
+  burst_speed:   { label: '⚡ Burst Speed',     color: 'text-amber-400' },
+  window_speed:  { label: '📈 Window Speed',    color: 'text-orange-400' },
+  fix_fix:       { label: '🔄 Fix→Fix Pattern', color: 'text-yellow-400' },
+  coauthored:    { label: '🤝 AI Co-author',    color: 'text-purple-400' },
+  rapid_commits: { label: '💨 Rapid Commits',   color: 'text-blue-400' },
+  ci_failure:    { label: '🔴 CI Failure Fix',  color: 'text-red-400' },
+  line_volume:   { label: '📦 Line Volume',     color: 'text-emerald-400' },
 }
 
-function ScoreRing({ score }: { score: number }) {
-  const emoji = score >= 70 ? '🤖' : score >= 40 ? '🤝' : '👨‍💻'
-  const color = score >= 70 ? 'text-red-400' : score >= 40 ? 'text-yellow-400' : 'text-emerald-400'
-  const label = score >= 70 ? 'Heavy AI Assist' : score >= 40 ? 'Some AI Assist' : 'Mostly Human'
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function formatScore(score: number): string {
+  if (score >= 1_000_000) return `${(score / 1_000_000).toFixed(2)}M`
+  if (score >= 1_000) return `${(score / 1_000).toFixed(1)}k`
+  return score.toFixed(1)
+}
+
+function scoreLabel(score: number): { emoji: string; label: string; colorClass: string } {
+  if (score >= 2000) return { emoji: '🤖', label: 'Pure Vibe Coding',   colorClass: 'text-red-400' }
+  if (score >= 500)  return { emoji: '🤖', label: 'Heavy AI Assist',    colorClass: 'text-orange-400' }
+  if (score >= 100)  return { emoji: '🤝', label: 'Mixed Vibes',        colorClass: 'text-yellow-400' }
+  return               { emoji: '👨‍💻', label: 'Mostly Human',          colorClass: 'text-emerald-400' }
+}
+
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+function ScoreDisplay({ score }: { score: number }) {
+  const { emoji, label, colorClass } = scoreLabel(score)
+  return (
+    <div className="flex flex-col items-center py-8">
+      <div className="text-8xl mb-3">{emoji}</div>
+      <div className={`text-6xl font-bold tabular-nums ${colorClass}`}>
+        {formatScore(score)}
+      </div>
+      <div className="text-gray-500 text-lg mt-1">points</div>
+      <div className="text-gray-400 mt-2 text-lg">{label}</div>
+    </div>
+  )
+}
+
+function BreakdownBar({ result }: { result: AnalysisResult }) {
+  const { breakdown } = result
+  const entries = [
+    { label: 'Line Volume',    value: breakdown.lineVolume,    color: 'bg-emerald-600' },
+    { label: 'Burst Speed',    value: breakdown.burstSignals,  color: 'bg-amber-500' },
+    { label: 'Window Speed',   value: breakdown.windowSpeed,   color: 'bg-orange-500' },
+    { label: 'Fix→Fix',        value: breakdown.fixFix,        color: 'bg-yellow-500' },
+    { label: 'Co-authored',    value: breakdown.coauthored,    color: 'bg-purple-500' },
+    { label: 'Rapid Commits',  value: breakdown.rapidCommits,  color: 'bg-blue-500' },
+    { label: 'CI Failures',    value: breakdown.ciFailures,    color: 'bg-red-500' },
+  ].filter((e) => e.value > 0)
+
+  const total = entries.reduce((s, e) => s + e.value, 0)
+  if (total === 0) return null
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="text-8xl mb-2">{emoji}</div>
-      <div className={`text-7xl font-bold ${color}`}>{score}%</div>
-      <div className="text-gray-400 mt-2 text-lg">{label}</div>
+    <div>
+      <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">Score Breakdown</h2>
+      <div className="flex rounded-lg overflow-hidden h-4 mb-3">
+        {entries.map((e) => (
+          <div
+            key={e.label}
+            className={`${e.color} transition-all`}
+            style={{ width: `${(e.value / total) * 100}%` }}
+            title={`${e.label}: ${formatScore(e.value)} pts`}
+          />
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {entries.map((e) => (
+          <div key={e.label} className="flex items-center gap-1.5 text-xs">
+            <span className={`w-2.5 h-2.5 rounded-sm inline-block ${e.color}`} />
+            <span className="text-gray-500">{e.label}</span>
+            <span className="text-gray-400 font-mono">{formatScore(e.value)}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
 function TimelineChart({ timeline }: { timeline: AnalysisResult['timeline'] }) {
   if (timeline.length === 0) return null
-
   const maxCommits = Math.max(...timeline.map((t) => t.commits), 1)
-
-  // Show last 24 buckets max
-  const shown = timeline.slice(-24)
+  const shown = timeline.slice(-48)
 
   return (
     <div>
       <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">Commit Timeline</h2>
-      <div className="flex items-end gap-1 h-20">
+      <div className="flex items-end gap-0.5 h-16">
         {shown.map((bucket) => {
-          const height = Math.max(4, (bucket.commits / maxCommits) * 80)
+          const height = Math.max(3, (bucket.commits / maxCommits) * 64)
           const hasSignal = bucket.score > 0
           return (
             <div
               key={bucket.hour}
               className="flex-1 relative group cursor-default"
-              title={`${bucket.hour}\n${bucket.commits} commits${hasSignal ? '\n⚠️ signals detected' : ''}`}
+              title={`${bucket.hour}\n${bucket.commits} commits${hasSignal ? '\n⚠️ signals' : ''}`}
             >
               <div
-                className={`w-full rounded-sm transition-all ${
-                  hasSignal ? 'bg-red-500' : 'bg-emerald-700'
-                }`}
+                className={`w-full rounded-sm ${hasSignal ? 'bg-red-500' : 'bg-emerald-800'}`}
                 style={{ height: `${height}px` }}
               />
-              {/* Tooltip */}
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10 whitespace-nowrap bg-gray-800 text-xs text-gray-200 px-2 py-1 rounded shadow-lg">
-                {bucket.hour.split(' ')[1] ?? bucket.hour}
-                <br />
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10 whitespace-nowrap bg-gray-800 text-xs text-gray-200 px-2 py-1 rounded shadow-lg pointer-events-none">
+                {bucket.hour.split(' ')[1] ?? bucket.hour}<br />
                 {bucket.commits} commit{bucket.commits !== 1 ? 's' : ''}
-                {hasSignal && <><br />⚠️ signals</>}
+                {hasSignal && <><br />⚠️ {formatScore(bucket.score)} pts</>}
               </div>
             </div>
           )
@@ -67,8 +130,8 @@ function TimelineChart({ timeline }: { timeline: AnalysisResult['timeline'] }) {
         <span>{shown[shown.length - 1]?.hour.split(' ')[0] ?? ''}</span>
       </div>
       <div className="flex gap-4 mt-2 text-xs text-gray-600">
-        <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-700 rounded-sm inline-block" /> Normal</span>
-        <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-500 rounded-sm inline-block" /> AI signals</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-emerald-800 rounded-sm inline-block" /> Normal</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-red-500 rounded-sm inline-block" /> AI signals</span>
       </div>
     </div>
   )
@@ -76,24 +139,122 @@ function TimelineChart({ timeline }: { timeline: AnalysisResult['timeline'] }) {
 
 function SignalList({ signals }: { signals: VibeSignal[] }) {
   if (signals.length === 0) return <p className="text-gray-600 text-sm">No suspicious signals detected.</p>
-
   return (
     <div className="space-y-2">
-      {signals.map((sig, i) => (
-        <div key={i} className="flex items-start gap-3 bg-gray-800/50 rounded-lg p-3">
-          <span className="text-sm font-semibold text-gray-300 min-w-[140px]">
-            {SIGNAL_LABELS[sig.type]}
-          </span>
-          <span className="text-sm text-gray-400 flex-1">{sig.description}</span>
-          {sig.commitSha && (
-            <span className="text-xs text-gray-600 font-mono">{sig.commitSha.slice(0, 7)}</span>
-          )}
-          <span className="text-xs font-bold text-amber-400">+{sig.score}</span>
-        </div>
-      ))}
+      {signals.map((sig, i) => {
+        const meta = SIGNAL_META[sig.type]
+        return (
+          <div key={i} className="flex items-start gap-3 bg-gray-800/50 rounded-lg p-3">
+            <span className={`text-sm font-semibold shrink-0 min-w-[150px] ${meta.color}`}>
+              {meta.label}
+            </span>
+            <span className="text-sm text-gray-400 flex-1 min-w-0 break-words">{sig.description}</span>
+            {sig.commitSha && (
+              <span className="text-xs text-gray-600 font-mono shrink-0">{sig.commitSha.slice(0, 7)}</span>
+            )}
+            <span className="text-xs font-bold text-amber-400 shrink-0">
+              +{formatScore(sig.score)}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }
+
+function RateLimitBanner({ error }: { error: RateLimitError }) {
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const secondsLeft = Math.max(0, error.resetsAt * 1000 - now)
+  const minutes = Math.floor(secondsLeft / 60000)
+  const seconds = Math.floor((secondsLeft % 60000) / 1000)
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
+      <div className="text-6xl">⏳</div>
+      <h2 className="text-2xl font-bold text-yellow-400">GitHub Rate Limit</h2>
+      <p className="text-gray-400 text-center max-w-sm">{error.message}</p>
+      {secondsLeft > 0 && (
+        <div className="card text-center mt-2">
+          <p className="text-gray-500 text-sm mb-1">Resets in</p>
+          <p className="text-3xl font-bold tabular-nums text-yellow-400">
+            {minutes}:{String(seconds).padStart(2, '0')}
+          </p>
+        </div>
+      )}
+      <Link to="/" className="btn-secondary mt-2">← Back</Link>
+    </div>
+  )
+}
+
+// ── EnrollButton ──────────────────────────────────────────────────────────────
+
+function EnrollButton({ owner, repo, isPrivate }: { owner: string; repo: string; isPrivate?: boolean }) {
+  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [label, setLabel] = useState<string>('')
+  const [errMsg, setErrMsg] = useState('')
+
+  async function handleEnroll() {
+    setState('loading')
+    try {
+      const result = await enrollRepo(owner, repo)
+      setLabel(result.label)
+      setState('done')
+    } catch (err: any) {
+      setErrMsg(err.message)
+      setState('error')
+    }
+  }
+
+  if (isPrivate) {
+    return (
+      <p className="text-gray-600 text-sm text-center">
+        🔒 Private repo — leaderboard submission not available
+      </p>
+    )
+  }
+
+  if (state === 'done') {
+    return (
+      <div className="text-center">
+        <p className="text-emerald-400 font-semibold">✅ Submitted to {label} leaderboard!</p>
+        <Link to="/leaderboard" className="text-emerald-600 hover:text-emerald-400 text-sm mt-1 block transition-colors">
+          View leaderboard →
+        </Link>
+      </div>
+    )
+  }
+
+  if (state === 'error') {
+    return (
+      <div className="text-center">
+        <p className="text-red-400 text-sm">{errMsg}</p>
+        <button onClick={() => setState('idle')} className="text-gray-500 text-xs mt-1 hover:text-gray-300 transition-colors">
+          Try again
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="text-center">
+      <button
+        onClick={handleEnroll}
+        disabled={state === 'loading'}
+        className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {state === 'loading' ? 'Submitting…' : '🏆 Submit to Leaderboard'}
+      </button>
+      <p className="text-gray-600 text-xs mt-2">Only public repos can be submitted</p>
+    </div>
+  )
+}
+
+// ── Main Result page ───────────────────────────────────────────────────────────
 
 export default function Result() {
   const { owner, repo } = useParams<{ owner: string; repo: string }>()
@@ -101,14 +262,17 @@ export default function Result() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [authRequired, setAuthRequired] = useState(false)
+  const [rateLimitError, setRateLimitError] = useState<RateLimitError | null>(null)
   const [cached, setCached] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!owner || !repo) return
 
     setLoading(true)
     setError('')
+    setAuthRequired(false)
+    setRateLimitError(null)
 
     analyzeRepo(owner, repo)
       .then(({ data, cached: c }) => {
@@ -120,18 +284,21 @@ export default function Result() {
         const stored = localStorage.getItem('vibecheck_recent')
         let recent: Array<{ repo: string; score: number; analyzedAt: number }> = []
         try { recent = JSON.parse(stored ?? '[]') } catch {}
-        recent = [{ repo: key, score: data.overallScore, analyzedAt: data.analyzedAt }, ...recent.filter((r) => r.repo !== key)].slice(0, 5)
+        recent = [
+          { repo: key, score: data.score, analyzedAt: data.analyzedAt },
+          ...recent.filter((r) => r.repo !== key),
+        ].slice(0, 5)
         localStorage.setItem('vibecheck_recent', JSON.stringify(recent))
       })
       .catch((err) => {
-        if (err instanceof AuthRequiredError) {
-          setAuthRequired(true)
-        } else {
-          setError(err.message)
-        }
+        if (err instanceof AuthRequiredError) setAuthRequired(true)
+        else if (err instanceof RateLimitError) setRateLimitError(err)
+        else setError(err.message)
       })
       .finally(() => setLoading(false))
   }, [owner, repo])
+
+  useEffect(() => { load() }, [load])
 
   function handleShare() {
     navigator.clipboard.writeText(window.location.href).then(() => {
@@ -140,16 +307,20 @@ export default function Result() {
     })
   }
 
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <div className="text-4xl animate-spin">🔍</div>
-        <p className="text-gray-400">Analyzing <span className="text-emerald-400">{owner}/{repo}</span>…</p>
-        <p className="text-gray-600 text-sm">Fetching up to 100 commits + diffs</p>
+        <p className="text-gray-400">
+          Analyzing <span className="text-emerald-400">{owner}/{repo}</span>…
+        </p>
+        <p className="text-gray-600 text-sm">Single GraphQL call — fetching 100 commits</p>
       </div>
     )
   }
 
+  // ── Auth required ──────────────────────────────────────────────────────────
   if (authRequired) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
@@ -159,9 +330,7 @@ export default function Result() {
           You need to login with GitHub to analyze repos.
           This lets us fetch commit data on your behalf.
         </p>
-        <a href={getLoginUrl()} className="btn-primary mt-2">
-          🐙 Login with GitHub
-        </a>
+        <a href={getLoginUrl()} className="btn-primary mt-2">🐙 Login with GitHub</a>
         <Link to="/" className="text-gray-600 hover:text-gray-400 text-sm transition-colors">
           ← Back to home
         </Link>
@@ -169,18 +338,27 @@ export default function Result() {
     )
   }
 
+  // ── Rate limit ─────────────────────────────────────────────────────────────
+  if (rateLimitError) return <RateLimitBanner error={rateLimitError} />
+
+  // ── Generic error ──────────────────────────────────────────────────────────
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
         <div className="text-4xl">😬</div>
         <p className="text-red-400 font-semibold">Analysis failed</p>
         <p className="text-gray-500 text-sm text-center max-w-md">{error}</p>
-        <Link to="/" className="btn-secondary mt-2">← Back</Link>
+        <div className="flex gap-3 mt-2">
+          <button onClick={load} className="btn-primary text-sm">Retry</button>
+          <Link to="/" className="btn-secondary text-sm">← Back</Link>
+        </div>
       </div>
     )
   }
 
   if (!result) return null
+
+  const { emoji } = scoreLabel(result.score)
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -191,7 +369,11 @@ export default function Result() {
           <span className="text-emerald-400 font-bold">VibeCheck</span>
         </Link>
         <div className="flex items-center gap-2">
-          {cached && <span className="text-xs text-gray-600 bg-gray-800 px-2 py-1 rounded">cached</span>}
+          {cached && (
+            <span className="text-xs text-gray-600 bg-gray-800 px-2 py-1 rounded" title="From cache">
+              cached
+            </span>
+          )}
           <button onClick={handleShare} className="btn-secondary text-sm py-1.5">
             {copied ? '✅ Copied!' : '🔗 Share'}
           </button>
@@ -199,8 +381,8 @@ export default function Result() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-10 space-y-8">
-        {/* Repo name */}
+      <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-10 space-y-6">
+        {/* Repo header */}
         <div className="text-center">
           <a
             href={`https://github.com/${owner}/${repo}`}
@@ -214,8 +396,13 @@ export default function Result() {
         </div>
 
         {/* Score */}
-        <div className="card text-center py-10">
-          <ScoreRing score={result.overallScore} />
+        <div className="card">
+          <ScoreDisplay score={result.score} />
+        </div>
+
+        {/* Breakdown */}
+        <div className="card">
+          <BreakdownBar result={result} />
         </div>
 
         {/* Timeline */}
@@ -231,18 +418,38 @@ export default function Result() {
           <SignalList signals={result.signals} />
         </div>
 
-        {/* What this means */}
+        {/* Enroll */}
+        <div className="card">
+          <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-4">Leaderboard</h2>
+          <EnrollButton owner={owner!} repo={repo!} />
+        </div>
+
+        {/* About */}
         <div className="card bg-gray-900/50">
           <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">About the Score</h2>
           <p className="text-gray-400 text-sm leading-relaxed">
-            The Vibe Score measures how much of the code was likely AI-assisted based on temporal patterns:
-            commit speed, lines-per-minute, rapid fix cycles, and explicit AI co-author tags.
-            A high score doesn't mean the code is bad — just that it was probably vibed into existence. 🤖
+            The score is <strong className="text-gray-200">unbounded</strong> — it accumulates for
+            every AI signal found. A massive AI-written monorepo will score in the tens of thousands.
+            Signals include typing-speed analysis, co-authorship tags, fix→fix cycles, CI failure
+            chains, and raw line volume.
           </p>
+          <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            {[
+              { sig: 'Co-authored-by', pts: '+200/commit' },
+              { sig: 'Fix→Fix cycle', pts: '+50/pair' },
+              { sig: 'CI failure fix', pts: '+30/commit' },
+              { sig: 'Line volume', pts: '+0.05/line' },
+            ].map((s) => (
+              <div key={s.sig} className="bg-gray-800 rounded px-2 py-1.5 text-center">
+                <div className="text-gray-300 font-semibold">{s.pts}</div>
+                <div className="text-gray-500 mt-0.5">{s.sig}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="text-center">
-          <p className="text-gray-600 text-xs">
+          <p className="text-gray-700 text-xs">
             Analyzed {new Date(result.analyzedAt).toLocaleString()}
           </p>
         </div>

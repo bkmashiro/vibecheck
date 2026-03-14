@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { getMe, getLoginUrl } from '../lib/api'
+import { getMe, getMyRepos, getLoginUrl, type UserRepo } from '../lib/api'
 
 interface RecentAnalysis {
   repo: string
@@ -8,50 +8,129 @@ interface RecentAnalysis {
   analyzedAt: number
 }
 
+function formatScore(score: number): string {
+  if (score >= 1000) return `${(score / 1000).toFixed(1)}k`
+  return Math.round(score).toString()
+}
+
+function scoreEmoji(score: number) {
+  if (score >= 500) return '🤖'
+  if (score >= 100) return '🤝'
+  return '👨‍💻'
+}
+
+function RepoPicker({
+  repos,
+  onSelect,
+}: {
+  repos: UserRepo[]
+  onSelect: (fullName: string) => void
+}) {
+  const [query, setQuery] = useState('')
+
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase()
+    return repos.filter(
+      (r) =>
+        r.fullName.toLowerCase().includes(q) ||
+        (r.description ?? '').toLowerCase().includes(q)
+    )
+  }, [repos, query])
+
+  return (
+    <div className="w-full max-w-lg mt-8">
+      <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">Your Repos</h2>
+      <input
+        className="input mb-3"
+        placeholder="Search repos…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
+        {filtered.length === 0 && (
+          <p className="text-gray-600 text-sm text-center py-4">No repos match</p>
+        )}
+        {filtered.map((repo) => (
+          <button
+            key={repo.fullName}
+            onClick={() => onSelect(repo.fullName)}
+            className="w-full text-left flex items-center justify-between bg-gray-800/60 hover:bg-gray-800 border border-gray-700/50 hover:border-gray-600 rounded-lg px-4 py-2.5 transition-colors"
+          >
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-emerald-400 text-sm font-semibold truncate">{repo.fullName}</span>
+                {repo.private && (
+                  <span className="text-xs text-gray-500 bg-gray-700 px-1.5 py-0.5 rounded shrink-0">
+                    private
+                  </span>
+                )}
+              </div>
+              {repo.description && (
+                <p className="text-gray-500 text-xs truncate mt-0.5">{repo.description}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-3 ml-3 shrink-0 text-xs text-gray-500">
+              {repo.language && <span>{repo.language}</span>}
+              {repo.stars > 0 && <span>⭐ {repo.stars}</span>}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function Home() {
   const [input, setInput] = useState('')
-  const [error, setError] = useState('')
+  const [inputError, setInputError] = useState('')
   const [user, setUser] = useState<{ login: string; avatar_url: string } | null>(null)
+  const [repos, setRepos] = useState<UserRepo[]>([])
+  const [reposLoading, setReposLoading] = useState(false)
   const [recent, setRecent] = useState<RecentAnalysis[]>([])
   const navigate = useNavigate()
 
   useEffect(() => {
-    getMe().then(setUser).catch(() => {})
+    // Load user
+    getMe()
+      .then((u) => {
+        setUser(u)
+        if (u) {
+          // Load their repos
+          setReposLoading(true)
+          getMyRepos()
+            .then(setRepos)
+            .catch(console.error)
+            .finally(() => setReposLoading(false))
+        }
+      })
+      .catch(() => {})
+
+    // Load recent from localStorage
     const stored = localStorage.getItem('vibecheck_recent')
     if (stored) {
-      try {
-        setRecent(JSON.parse(stored))
-      } catch {}
+      try { setRecent(JSON.parse(stored)) } catch {}
     }
   }, [])
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-
-    // Parse "owner/repo" or full GitHub URL
-    let repo = input.trim()
-    repo = repo.replace(/^https?:\/\/github\.com\//, '')
-    repo = repo.replace(/\.git$/, '').replace(/\/$/, '')
-
-    const parts = repo.split('/')
+  function navigateTo(fullName: string) {
+    const parts = fullName.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '').split('/')
     if (parts.length < 2 || !parts[0] || !parts[1]) {
-      setError('Enter a repo like "owner/repo" or a GitHub URL')
+      setInputError('Enter a repo like "owner/repo" or a GitHub URL')
       return
     }
-
     navigate(`/r/${parts[0]}/${parts[1]}`)
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setInputError('')
+    navigateTo(input.trim())
   }
 
   function handleLogout() {
     localStorage.removeItem('vibecheck_session')
     setUser(null)
-  }
-
-  function getScoreEmoji(score: number) {
-    if (score >= 70) return '🤖'
-    if (score >= 40) return '🤝'
-    return '👨‍💻'
+    setRepos([])
   }
 
   return (
@@ -70,20 +149,23 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <img src={user.avatar_url} alt={user.login} className="w-7 h-7 rounded-full" />
               <span className="text-sm text-gray-300">{user.login}</span>
-              <button onClick={handleLogout} className="text-xs text-gray-500 hover:text-gray-300 transition-colors ml-1">
+              <button
+                onClick={handleLogout}
+                className="text-xs text-gray-500 hover:text-gray-300 transition-colors ml-1"
+              >
                 logout
               </button>
             </div>
           ) : (
             <a href={getLoginUrl()} className="btn-secondary text-sm py-1.5 px-3">
-              <span>🐙 Login with GitHub</span>
+              🐙 Login with GitHub
             </a>
           )}
         </div>
       </header>
 
       {/* Hero */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-16">
+      <main className="flex-1 flex flex-col items-center px-4 py-14">
         <div className="text-center mb-10 max-w-2xl">
           <h1 className="text-5xl font-bold mb-4">
             <span className="text-emerald-400">Vibe</span>
@@ -91,10 +173,11 @@ export default function Home() {
           </h1>
           <p className="text-gray-400 text-lg">
             Analyze any GitHub repo's commit history and detect AI-assisted "vibe coding" patterns.
-            Get a <span className="text-emerald-400">Vibe Score</span> from 0–100%.
+            No score cap — the bigger the vibe, the bigger the number.
           </p>
         </div>
 
+        {/* Input */}
         <form onSubmit={handleSubmit} className="w-full max-w-lg">
           <div className="flex gap-2">
             <input
@@ -108,16 +191,32 @@ export default function Home() {
               Analyze →
             </button>
           </div>
-          {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
-          <p className="text-gray-600 text-xs mt-2 text-center">
-            GitHub login required to analyze repos — your token is never stored on our end
-          </p>
+          {inputError && <p className="text-red-400 text-sm mt-2">{inputError}</p>}
+          {!user && (
+            <p className="text-gray-600 text-xs mt-2 text-center">
+              <a href={getLoginUrl()} className="text-emerald-600 hover:text-emerald-400 transition-colors">
+                Login with GitHub
+              </a>{' '}
+              to analyze repos
+            </p>
+          )}
         </form>
 
-        {/* Recent */}
+        {/* Repo picker (logged in) */}
+        {user && (
+          <div className="w-full max-w-lg">
+            {reposLoading ? (
+              <p className="text-gray-600 text-sm text-center mt-8">Loading your repos…</p>
+            ) : repos.length > 0 ? (
+              <RepoPicker repos={repos} onSelect={navigateTo} />
+            ) : null}
+          </div>
+        )}
+
+        {/* Recent analyses */}
         {recent.length > 0 && (
-          <div className="mt-12 w-full max-w-lg">
-            <h2 className="text-sm text-gray-500 mb-3 uppercase tracking-wider">Recent Analyses</h2>
+          <div className="mt-10 w-full max-w-lg">
+            <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">Recent Analyses</h2>
             <div className="space-y-2">
               {recent.map((r) => (
                 <Link
@@ -127,9 +226,9 @@ export default function Home() {
                 >
                   <span className="text-gray-300 text-sm">{r.repo}</span>
                   <span className="flex items-center gap-1 text-sm font-semibold">
-                    <span>{getScoreEmoji(r.score)}</span>
-                    <span className={r.score >= 70 ? 'text-red-400' : r.score >= 40 ? 'text-yellow-400' : 'text-emerald-400'}>
-                      {r.score}%
+                    <span>{scoreEmoji(r.score)}</span>
+                    <span className={r.score >= 500 ? 'text-red-400' : r.score >= 100 ? 'text-yellow-400' : 'text-emerald-400'}>
+                      {formatScore(r.score)} pts
                     </span>
                   </span>
                 </Link>
@@ -138,20 +237,22 @@ export default function Home() {
           </div>
         )}
 
-        {/* Explainer */}
-        <div className="mt-16 max-w-2xl w-full grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[
-            { icon: '⚡', title: 'Burst Speed', desc: 'Commits with 500+ lines/min — impossible for humans' },
-            { icon: '🔄', title: 'Rapid Fixes', desc: 'Fix-after-fix commits within minutes' },
-            { icon: '🤝', title: 'Co-authorship', desc: 'Explicit AI co-author attributions in commits' },
-          ].map((item) => (
-            <div key={item.title} className="card text-center">
-              <div className="text-3xl mb-2">{item.icon}</div>
-              <h3 className="font-semibold text-gray-200 mb-1">{item.title}</h3>
-              <p className="text-gray-500 text-sm">{item.desc}</p>
-            </div>
-          ))}
-        </div>
+        {/* Feature explainer */}
+        {!user && (
+          <div className="mt-14 max-w-2xl w-full grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              { icon: '⚡', title: 'Burst Speed', desc: 'Commits with 500+ lines/min — impossible for humans' },
+              { icon: '🔄', title: 'Rapid Fixes', desc: 'Fix-after-fix commits within minutes (+50 pts each)' },
+              { icon: '🤝', title: 'Co-authorship', desc: 'Explicit AI co-author attribution (+200 pts)' },
+            ].map((item) => (
+              <div key={item.title} className="card text-center">
+                <div className="text-3xl mb-2">{item.icon}</div>
+                <h3 className="font-semibold text-gray-200 mb-1">{item.title}</h3>
+                <p className="text-gray-500 text-sm">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </main>
 
       <footer className="text-center py-6 text-gray-700 text-xs border-t border-gray-900">
