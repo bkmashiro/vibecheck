@@ -174,3 +174,13 @@ export async function getMyRepos(): Promise<UserRepo[]> {
 export function getLoginUrl(): string {
   return `${API_BASE}/auth/login`
 }
+
+export async function checkEnrolled(owner: string, repo: string): Promise<{ enrolled: boolean; score?: number; aiProvider?: string | null }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/enrolled/${owner}/${repo}`)
+    if (!res.ok) return { enrolled: false }
+    return res.json()
+  } catch {
+    return { enrolled: false }
+  }
+}

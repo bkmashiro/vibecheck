@@ -4,6 +4,7 @@ import { t, getRoast } from '../lib/i18n'
 import {
   analyzeRepo,
   enrollRepo,
+  checkEnrolled,
   AuthRequiredError,
   RateLimitError,
   getLoginUrl,
@@ -302,13 +303,25 @@ function markEnrolled(fullRepo: string) {
 
 function EnrollButton({ owner, repo, isPrivate, cached }: { owner: string; repo: string; isPrivate?: boolean; cached?: boolean }) {
   const fullRepo = `${owner}/${repo}`
-  const alreadyEnrolled = getEnrolledRepos().includes(fullRepo)
-  const [state, setState] = useState<'idle' | 'already' | 'choosing' | 'loading' | 'done' | 'error'>(
-    alreadyEnrolled ? 'already' : 'idle'
+  const localEnrolled = getEnrolledRepos().includes(fullRepo)
+  const [state, setState] = useState<'idle' | 'checking' | 'already' | 'choosing' | 'loading' | 'done' | 'error'>(
+    localEnrolled ? 'already' : 'checking'
   )
   const [label, setLabel] = useState<string>('')
   const [errMsg, setErrMsg] = useState('')
   const [provider, setProvider] = useState<string>('')
+
+  useEffect(() => {
+    if (localEnrolled) return // already know from localStorage
+    checkEnrolled(owner, repo).then(({ enrolled }) => {
+      if (enrolled) {
+        markEnrolled(fullRepo)
+        setState('already')
+      } else {
+        setState('idle')
+      }
+    })
+  }, [owner, repo])
 
   async function handleEnroll() {
     setState('loading')
@@ -325,6 +338,10 @@ function EnrollButton({ owner, repo, isPrivate, cached }: { owner: string; repo:
 
   if (isPrivate) {
     return <p className="text-gray-600 text-sm text-center">{t.privateRepo}</p>
+  }
+
+  if (state === 'checking') {
+    return <p className="text-gray-600 text-xs text-center animate-pulse">Checking enrollment…</p>
   }
 
   if (state === 'done') {
@@ -387,7 +404,7 @@ function EnrollButton({ owner, repo, isPrivate, cached }: { owner: string; repo:
           ))}
         </div>
         <div className="flex gap-2 justify-center">
-          <button onClick={() => setState(alreadyEnrolled ? 'already' : 'idle')} className="text-gray-600 text-xs hover:text-gray-400">{t.cancelBtn}</button>
+          <button onClick={() => setState(localEnrolled ? 'already' : 'idle')} className="text-gray-600 text-xs hover:text-gray-400">{t.cancelBtn}</button>
           <button
             onClick={handleEnroll}
             disabled={state === ('loading' as string)}
@@ -537,22 +554,25 @@ export default function Result() {
           <span className="text-emerald-400 font-bold">VibeCheck</span>
         </Link>
         <div className="flex items-center gap-2">
-          {cached && (
+          {cached ? (
             <button
               onClick={() => load(true)}
-              className="text-xs text-gray-600 bg-gray-800 hover:bg-gray-700 hover:text-gray-400 px-2 py-1 rounded transition-colors"
-              title="Click to re-analyze with latest commits"
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-yellow-600/50 bg-yellow-900/20 text-yellow-400 hover:bg-yellow-900/40 hover:border-yellow-500 transition-colors"
+              title="Results are cached — click to re-analyze with latest commits"
             >
-              cached · refresh?
+              <span>🔄</span>
+              <span>{t.reanalyze}</span>
+              <span className="text-xs text-yellow-600 ml-0.5">cached</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => load(true)}
+              className="btn-secondary text-sm py-1.5 px-2.5"
+              title="Re-analyze (bypass cache)"
+            >
+              🔄
             </button>
           )}
-          <button
-            onClick={() => { load(true) }}
-            className="btn-secondary text-sm py-1.5"
-            title="Re-analyze (bypass cache)"
-          >
-            🔄
-          </button>
           <button onClick={handleShare} className="btn-secondary text-sm py-1.5">
             {copied ? '✅ Copied!' : '🔗 Share'}
           </button>

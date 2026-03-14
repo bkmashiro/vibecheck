@@ -255,6 +255,24 @@ app.post('/api/enroll', async (c) => {
   }
 })
 
+// ── Enrollment status check ───────────────────────────────────────────────────
+
+app.get('/api/enrolled/:owner/:repo', async (c) => {
+  const { owner, repo } = c.req.param()
+  const fullRepo = `${owner}/${repo}`
+  try {
+    const ver = await getCurrentVersion(c.env.DB)
+    if (!ver) return c.json({ enrolled: false })
+    const row = await c.env.DB.prepare(
+      'SELECT score, ai_provider FROM leaderboard WHERE repo = ? AND version = ?'
+    ).bind(fullRepo, ver.version).first<{ score: number; ai_provider: string | null }>()
+    if (!row) return c.json({ enrolled: false })
+    return c.json({ enrolled: true, score: row.score, aiProvider: row.ai_provider })
+  } catch {
+    return c.json({ enrolled: false })
+  }
+})
+
 // ── Leaderboard read ───────────────────────────────────────────────────────────
 
 app.get('/api/leaderboard', async (c) => {
