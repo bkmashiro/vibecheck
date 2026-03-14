@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import Nav from '../components/Nav'
 import { t, getRoast } from '../lib/i18n'
 import {
   analyzeRepo,
@@ -547,38 +548,42 @@ export default function Result() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 text-gray-400 hover:text-gray-200 transition-colors">
-          <span>←</span>
-          <span className="text-emerald-400 font-bold">VibeCheck</span>
-        </Link>
-        <div className="flex items-center gap-2">
+      <Nav />
+      {/* Repo action bar */}
+      <div className="border-b border-gray-800/60 px-4 sm:px-6 py-2 flex items-center justify-between bg-gray-950/80">
+        <a
+          href={`https://github.com/${owner}/${repo}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-gray-500 hover:text-gray-300 text-xs transition-colors font-mono"
+        >
+          {owner}/{repo} ↗
+        </a>
+        <div className="flex items-center gap-1.5">
           {cached ? (
             <button
               onClick={() => load(true)}
-              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-yellow-600/50 bg-yellow-900/20 text-yellow-400 hover:bg-yellow-900/40 hover:border-yellow-500 transition-colors"
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-yellow-600/50 bg-yellow-900/20 text-yellow-400 hover:bg-yellow-900/40 hover:border-yellow-500 transition-colors"
               title="Results are cached — click to re-analyze with latest commits"
             >
               <span>🔄</span>
               <span>{t.reanalyze}</span>
-              <span className="text-xs text-yellow-600 ml-0.5">cached</span>
+              <span className="text-yellow-600 ml-0.5">cached</span>
             </button>
           ) : (
             <button
               onClick={() => load(true)}
-              className="btn-secondary text-sm py-1.5 px-2.5"
+              className="btn-secondary text-xs py-1 px-2"
               title="Re-analyze (bypass cache)"
             >
               🔄
             </button>
           )}
-          <button onClick={handleShare} className="btn-secondary text-sm py-1.5">
+          <button onClick={handleShare} className="btn-secondary text-xs py-1 px-2.5">
             {copied ? t.copied : t.share}
           </button>
-          <Link to="/leaderboard" className="btn-secondary text-sm py-1.5">🏆</Link>
         </div>
-      </header>
+      </div>
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-10 space-y-6">
         {/* Repo header */}

@@ -1,3 +1,4 @@
+import Nav from '../components/Nav'
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { getMe, getMyRepos, getLoginUrl, type UserRepo } from '../lib/api'
@@ -134,57 +135,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🔍</span>
-          <span className="text-xl font-bold text-emerald-400">VibeCheck</span>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Language switcher */}
-          <div className="flex gap-1">
-            {LANGS.map(l => (
-              <button
-                key={l.code}
-                onClick={() => setLang(l.code)}
-                className={`text-xs px-2 py-1 rounded transition-colors ${lang === l.code ? 'text-emerald-400 bg-gray-800' : 'text-gray-600 hover:text-gray-400'}`}
-              >
-                {l.label}
-              </button>
-            ))}
-          </div>
-          <Link to="/stats" className="text-gray-400 hover:text-gray-200 text-sm transition-colors">
-            {t.stats}
-          </Link>
-          <Link to="/leaderboard" className="text-gray-400 hover:text-gray-200 text-sm transition-colors">
-            {t.leaderboard}
-          </Link>
-          {user ? (
-            <div className="flex items-center gap-2">
-              <a
-                href={`https://github.com/${user.login}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-                title={`@${user.login} on GitHub`}
-              >
-                <img src={user.avatar_url} alt={user.login} className="w-7 h-7 rounded-full ring-1 ring-gray-700 hover:ring-emerald-500 transition-all" />
-                <span className="text-sm text-gray-300">{user.login}</span>
-              </a>
-              <button
-                onClick={handleLogout}
-                className="text-xs text-gray-500 hover:text-gray-300 transition-colors ml-1"
-              >
-                {t.logout}
-              </button>
-            </div>
-          ) : (
-            <a href={getLoginUrl()} className="btn-secondary text-sm py-1.5 px-3">
-              {t.loginBtn}
-            </a>
-          )}
-        </div>
-      </header>
+      <Nav />
 
       {/* Hero */}
       <main className="flex-1 flex flex-col items-center px-4 py-14">

@@ -1,3 +1,4 @@
+import Nav from '../components/Nav'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { API_URL } from '../lib/api'
@@ -177,18 +178,7 @@ export default function Stats() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link to="/" className="text-2xl">🔍</Link>
-          <span className="text-xl font-bold text-emerald-400">VibeCheck</span>
-          <span className="text-gray-600">/</span>
-          <span className="text-gray-400">Stats</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link to="/leaderboard" className="text-gray-400 hover:text-gray-200 text-sm">🏆 Leaderboard</Link>
-          <Link to="/" className="text-gray-400 hover:text-gray-200 text-sm">← Home</Link>
-        </div>
-      </header>
+      <Nav />
 
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-10">
         {loading && <p className="text-gray-500 text-center py-20">Loading stats…</p>}

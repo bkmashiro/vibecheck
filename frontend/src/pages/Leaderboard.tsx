@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { t } from '../lib/i18n'
+import Nav from '../components/Nav'
 import { getLeaderboard, getVersions, type LeaderboardEntry, type ScoringVersion } from '../lib/api'
 
 function formatScore(score: number): string {
@@ -53,13 +54,7 @@ export default function Leaderboard() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 text-gray-400 hover:text-gray-200 transition-colors">
-          <span>←</span>
-          <span className="text-emerald-400 font-bold">VibeCheck</span>
-        </Link>
-        <h1 className="font-bold text-gray-200">🏆 Leaderboard</h1>
-      </header>
+      <Nav />
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-10">
         {/* Title + version selector */}
