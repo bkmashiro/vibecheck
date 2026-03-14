@@ -61,9 +61,7 @@ function RepoPicker({
               <div className="flex items-center gap-2">
                 <span className="text-emerald-400 text-sm font-semibold truncate">{repo.fullName}</span>
                 {repo.private && (
-                  <span className="text-xs text-gray-500 bg-gray-700 px-1.5 py-0.5 rounded shrink-0">
-                    private
-                  </span>
+                  <span className="text-xs text-gray-500 bg-gray-700 px-1.5 py-0.5 rounded shrink-0">{t.privateBadge}</span>
                 )}
               </div>
               {repo.description && (
@@ -116,7 +114,7 @@ export default function Home() {
   function navigateTo(fullName: string) {
     const parts = fullName.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '').split('/')
     if (parts.length < 2 || !parts[0] || !parts[1]) {
-      setInputError('Enter a repo like "owner/repo" or a GitHub URL')
+      setInputError(t.inputError)
       return
     }
     navigate(`/r/${parts[0]}/${parts[1]}`)
@@ -169,7 +167,7 @@ export default function Home() {
                 onClick={handleLogout}
                 className="text-xs text-gray-500 hover:text-gray-300 transition-colors ml-1"
               >
-                logout
+                {t.logout}
               </button>
             </div>
           ) : (
@@ -221,7 +219,7 @@ export default function Home() {
         {user && (
           <div className="w-full max-w-lg">
             {reposLoading ? (
-              <p className="text-gray-600 text-sm text-center mt-8">Loading your repos…</p>
+              <p className="text-gray-600 text-sm text-center mt-8">{t.loadingRepos}</p>
             ) : repos.length > 0 ? (
               <RepoPicker repos={repos} onSelect={navigateTo} />
             ) : null}
@@ -256,9 +254,9 @@ export default function Home() {
         {!user && (
           <div className="mt-14 max-w-2xl w-full grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
-              { icon: '⚡', title: 'Burst Speed', desc: 'Commits with 500+ lines/min — impossible for humans' },
-              { icon: '🔄', title: 'Rapid Fixes', desc: 'Fix-after-fix commits within minutes (+50 pts each)' },
-              { icon: '🤝', title: 'Co-authorship', desc: 'Explicit AI co-author attribution (+200 pts)' },
+              { icon: '⚡', title: t.featBurstTitle, desc: t.featBurstDesc },
+              { icon: '🔄', title: t.featFixTitle, desc: t.featFixDesc },
+              { icon: '🤝', title: t.featCoTitle, desc: t.featCoDesc },
             ].map((item) => (
               <div key={item.title} className="card text-center">
                 <div className="text-3xl mb-2">{item.icon}</div>

@@ -1,135 +1,127 @@
-# VibeCheck 🔍
+<div align="center">
+
+# 🔍 VibeCheck
+
+**Does your commit history pass the vibe check?**
+
+*Analyze any GitHub repo and find out how much of it was actually written by a human.*
 
 **[中文](./README.zh.md) | [日本語](./README.ja.md)**
 
-> **How AI is your codebase, really?**
->
-> You say you wrote it. Your commits say otherwise.
-
-VibeCheck analyzes your git commit history and detects the unmistakable fingerprints of AI-assisted coding — superhuman typing speeds, suspiciously perfect commit bursts, fix-fix-fix chains that no human debugs that fast, and the telltale `Co-Authored-By: Claude` you forgot to scrub.
-
-**[→ Try it at git-vibe.pages.dev](https://git-vibe.pages.dev)**
-
 [![Vibe Score](https://img.shields.io/endpoint?url=https://vibecheck-api.dylan-233.workers.dev/badge/repo/bkmashiro/vibecheck)](https://git-vibe.pages.dev/r/bkmashiro/vibecheck)
 [![Vibe Rank](https://img.shields.io/endpoint?url=https://vibecheck-api.dylan-233.workers.dev/badge/rank/bkmashiro/vibecheck)](https://git-vibe.pages.dev/r/bkmashiro/vibecheck)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+
+### **[→ git-vibe.pages.dev](https://git-vibe.pages.dev)**
+
+</div>
 
 ---
 
-## Badges
+## What is this?
 
-Show off your vibe score (or shame) in your repo's README:
+You know how some repos have 47 commits, each one adding 800 lines in under 2 minutes, with commit messages like `feat: implement complete authentication system with JWT, refresh tokens, rate limiting, and comprehensive error handling`?
 
-### Repo Vibe Score
+VibeCheck detects that.
+
+It analyzes commit history for signals that no human programmer can produce — burst speeds that exceed physical typing limits, suspicious fix-fix-fix chains, co-authorship tags, and more. Then it gives you a score. The higher the score, the more AI was involved.
+
+**No score cap.** A truly vibed-out monorepo can hit 10,000+. This is intentional. It's a leaderboard, not a pass/fail.
+
+---
+
+## Signals
+
+| Signal | Points | Why |
+|--------|--------|-----|
+| 🚀 Burst > 500 lines/min | +40 / commit | Physically impossible for humans |
+| ⚡ Burst > 200 lines/min | +20 / commit | Extremely fast for any human |
+| 🌊 30-min window > 300 lines/min | +30 / window | Sustained AI-speed output |
+| ⏩ Large commit in < 2 min | +15 | No time to think |
+| 🔁 Fix → Fix in < 10 min | +50 / pair | Classic AI debugging loop |
+| 🤝 `Co-Authored-By:` in message | +200 / commit | You forgot to scrub it |
+| 💥 CI failure keywords | +30 / commit | `fix:`, `hotfix:`, `revert:` etc. |
+| 📏 Line volume | × 0.05 / line | Raw size matters |
+
+---
+
+## Leaderboard
+
+Who's the most vibed? Find out at **[git-vibe.pages.dev/leaderboard](https://git-vibe.pages.dev/leaderboard)**.
+
+Submit your repo after analysis and see where you rank globally. Tag which AI you used most — the **Provider Wars** chart shows which tools produce the most vibe per commit.
+
+---
+
+## Put a badge in your README
+
+After analyzing your repo at VibeCheck, you get ready-to-copy badge markdown.
+
+Or grab it directly:
+
 ```markdown
 [![Vibe Score](https://img.shields.io/endpoint?url=https://vibecheck-api.dylan-233.workers.dev/badge/repo/OWNER/REPO)](https://git-vibe.pages.dev/r/OWNER/REPO)
-```
-
-### Repo Global Rank
-```markdown
 [![Vibe Rank](https://img.shields.io/endpoint?url=https://vibecheck-api.dylan-233.workers.dev/badge/rank/OWNER/REPO)](https://git-vibe.pages.dev/r/OWNER/REPO)
 ```
 
-### Your Most Vibe Repo (User Badge)
+Personal badge (your highest-ranked repo):
+
 ```markdown
 [![Top Vibe Repo](https://img.shields.io/endpoint?url=https://vibecheck-api.dylan-233.workers.dev/badge/user/YOUR_GITHUB_USERNAME)](https://git-vibe.pages.dev)
 ```
 
-**Example** (bkmashiro/redscript):
-
-[![Vibe Score](https://img.shields.io/endpoint?url=https://vibecheck-api.dylan-233.workers.dev/badge/repo/bkmashiro/redscript)](https://git-vibe.pages.dev/r/bkmashiro/redscript)
-[![Vibe Rank](https://img.shields.io/endpoint?url=https://vibecheck-api.dylan-233.workers.dev/badge/rank/bkmashiro/redscript)](https://git-vibe.pages.dev/r/bkmashiro/redscript)
-
 ---
 
-## How It Works
+## How it works
 
-See [HOW_IT_WORKS.md](./HOW_IT_WORKS.md) for the full algorithm breakdown.
+Single GitHub GraphQL request fetches 100 most recent commits with timestamps and line counts. No server-side GitHub token — all analysis runs with **your** OAuth token. Your token never leaves Cloudflare's edge.
 
-**TL;DR:** Humans type at most ~50 lines/minute when coding (including thinking time). AI outputs 500–2000 lines/minute. VibeCheck measures your commit history against this physical limit.
-
-Signals detected:
-| Signal | Points |
-|--------|--------|
-| Burst speed > 500 lines/min | +40 per commit |
-| Burst speed > 200 lines/min | +20 per commit |
-| 30-minute window > 300 lines/min | +30 per window |
-| Rapid commit < 2 min with 30+ lines | +15 per commit |
-| fix→fix pattern within 10 min | +50 per pair |
-| `Co-Authored-By:` in message | +200 per commit |
-| CI failure keywords in message | +30 per commit |
-| Total lines added | ×0.05 each |
-
-Score is **unbounded** — there is no maximum. The leaderboard is a competition.
+Full algorithm breakdown → [HOW_IT_WORKS.md](./HOW_IT_WORKS.md)
 
 ---
 
 ## Stack
 
-- **Frontend**: React + Vite + Tailwind CSS → Cloudflare Pages
-- **Backend**: Hono on Cloudflare Workers
-- **Storage**: Cloudflare KV (analysis cache) + D1 SQLite (leaderboard)
-- **Auth**: GitHub OAuth App
-- **Data**: GitHub GraphQL API (100 commits in 1 request)
+| Layer | Tech |
+|-------|------|
+| Frontend | React + Vite + Tailwind → Cloudflare Pages |
+| Backend | Hono on Cloudflare Workers |
+| Cache | Cloudflare KV (24h TTL) |
+| Leaderboard | Cloudflare D1 (SQLite) |
+| Auth | GitHub OAuth App |
+| Data | GitHub GraphQL API |
 
 ---
 
 ## Contributing
 
-The scoring algorithm is deliberately simple — and almost certainly wrong in interesting ways. Some ideas to improve it:
+The scoring algorithm is intentionally simple — and almost certainly wrong in interesting ways.
 
-**Better signal detection:**
-- Detect commit message AI patterns (suspiciously perfect grammar, over-formatted bullet points)
-- Measure commit message length distribution (AI tends to write longer messages)
-- Track author consistency (did a human and AI alternate?)
-- Weight signals differently by file type (generated code vs. handwritten)
-- Detect squash commits that hide vibe sessions
-
-**Algorithm improvements:**
-- Train a small classifier on labeled repos (known AI vs. known human)
-- Use commit message embeddings to cluster vibe vs. non-vibe sessions
-- Factor in time-of-day patterns (3am commits are suspicious)
-- Cross-reference CI pass rate with commit velocity
-
-**Calibration:**
-- The current thresholds (500 lines/min = AI) are rough estimates
-- Collect ground truth data and tune them properly
-- Different languages have different natural commit sizes (Rust vs Python vs generated JSON)
+**Signals we haven't implemented yet:**
+- Commit message AI-pattern detection (too-perfect grammar, over-structured bullet points)
+- Commit message length distribution (AI tends to write longer messages)
+- Author consistency tracking (does the human and AI alternate?)
+- Per-file-type signal weighting
+- Detection of squash commits hiding vibe sessions
 
 **Open questions:**
-- Should deletions count? Refactoring 10,000 lines to 100 is arguably more human than AI
+- Should deletions count? Refactoring 10k lines into 100 lines might be *more* human than AI
 - Should merge commits be excluded?
-- How to handle repos where AI generated the initial scaffold but humans maintained it?
+- How to handle repos where AI wrote the scaffold but humans maintain it?
 
-PRs welcome. If you have a better scoring idea, open an issue or just implement it — the algorithm lives in [`worker/src/analyze.ts`](./worker/src/analyze.ts).
+PRs welcome. The algorithm lives in [`worker/src/analyze.ts`](./worker/src/analyze.ts).
 
 ---
 
-## Wait, Is All This Vibe Actually Good?
+## Wait — is vibing actually bad?
 
-No. And yes. But mostly: it depends, and that's the point.
+**Short answer:** It depends on the *understand* : *generate* ratio.
 
-**The case against vibe coding:**
+VibeCheck measures *process*, not quality. A 5,000-point repo might be a masterpiece where the author deeply understood every AI-generated line. It might also be an undebuggable pile of plausible-sounding nonsense.
 
-AI-generated code is fast to produce and slow to understand. When you vibe a 500-line module into existence in 4 minutes, you often don't fully grasp what you shipped. This creates:
+We can't tell the difference. That's intentional.
 
-- **Maintenance debt**: Code you didn't write is code you have to re-learn every time you touch it
-- **Bug blindness**: LLMs confidently generate plausible-but-wrong implementations, and fast output makes it easy to miss them before they're in production
-- **Skill atrophy**: Delegation is fine; permanent dependency is not. There's evidence that heavy AI assistance impairs the development of debugging intuition and system design judgment
-- **Security risk**: AI models don't know your threat model. They'll generate functional code that's insecure by default if you didn't ask about security
-
-**The case for vibe coding:**
-
-Speed is a real competitive advantage. A small team that ships 10× faster than a well-staffed competitor wins — if the code works well enough. AI coding tools have genuinely compressed the gap between "I have an idea" and "it runs in production."
-
-Used well, they handle boilerplate, scaffold structure, suggest patterns you hadn't considered, and catch trivial bugs. The developer is still the architect.
-
-**The actual concern:**
-
-The problem isn't using AI — it's the ratio of *generation* to *comprehension*. VibeCheck's high scores correlate with speed, not understanding. A repo that scores 5000 pts might be a technical marvel built by someone who deeply understood every line the AI produced. It might also be a pile of AI output that its author can't debug.
-
-VibeCheck can't tell the difference. That's intentional — we're measuring the *process*, not the quality. The badge is a conversation starter, not a verdict.
-
-The real question isn't "did you use AI?" It's "do you know what's in your codebase?"
+The badge is a conversation starter, not a verdict. The real question isn't *"did you use AI?"* — it's *"do you know what's in your codebase?"*
 
 ---
 
@@ -146,4 +138,10 @@ MIT
 
 ---
 
+<div align="center">
+
 *Built with vibe coding 🤖 — yes, the irony is intentional.*
+
+*[Try it](https://git-vibe.pages.dev) · [Leaderboard](https://git-vibe.pages.dev/leaderboard) · [Stats](https://git-vibe.pages.dev/stats)*
+
+</div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { t } from '../lib/i18n'
 import { getLeaderboard, getVersions, type LeaderboardEntry, type ScoringVersion } from '../lib/api'
 
 function formatScore(score: number): string {
@@ -64,7 +65,7 @@ export default function Leaderboard() {
         {/* Title + version selector */}
         <div className="flex items-start justify-between mb-6 flex-wrap gap-3">
           <div>
-            <h2 className="text-2xl font-bold text-gray-100">Most Vibed Repos</h2>
+            <h2 className="text-2xl font-bold text-gray-100">{t.mostVibed}</h2>
             {currentVersion && (
               <p className="text-gray-500 text-sm mt-1">
                 Scoring: <span className="text-emerald-400">{currentVersion.label}</span>
@@ -77,7 +78,7 @@ export default function Leaderboard() {
 
           {versions.length > 1 && (
             <div className="flex items-center gap-2">
-              <span className="text-gray-600 text-sm">Version:</span>
+              <span className="text-gray-600 text-sm">{t.versionLabel}</span>
               <select
                 value={selectedVersion ?? currentVersion?.version ?? ''}
                 onChange={(e) => setSelectedVersion(e.target.value)}
@@ -96,7 +97,7 @@ export default function Leaderboard() {
         {loading && (
           <div className="text-center py-20">
             <div className="text-3xl animate-spin inline-block">🔍</div>
-            <p className="text-gray-500 mt-3">Loading leaderboard…</p>
+            <p className="text-gray-500 mt-3">{t.loadingLeaderboard}</p>
           </div>
         )}
 
@@ -109,12 +110,12 @@ export default function Leaderboard() {
         {!loading && !error && entries.length === 0 && (
           <div className="card text-center py-16">
             <div className="text-5xl mb-4">🏜️</div>
-            <p className="text-gray-400 mb-2">No repos enrolled yet.</p>
+            <p className="text-gray-400 mb-2">{t.noEnrolled}</p>
             <p className="text-gray-600 text-sm mb-6">
-              Analyze a repo and hit "Submit to Leaderboard" to appear here.
+              {t.noEnrolledDesc}
             </p>
             <Link to="/" className="btn-primary inline-block">
-              Analyze a repo →
+              {t.analyzeRepo}
             </Link>
           </div>
         )}
@@ -157,7 +158,7 @@ export default function Leaderboard() {
                       <div><ScoreBadge score={entry.score} /></div>
                       <div className="flex gap-3 justify-end">
                         {entry.commitCount != null && (
-                          <span className="text-gray-600 text-xs">{entry.commitCount.toLocaleString()} commits</span>
+                          <span className="text-gray-600 text-xs">{entry.commitCount.toLocaleString()} {t.commits}</span>
                         )}
                         <span className="text-gray-700 text-xs">
                           {new Date(entry.analyzedAt).toLocaleDateString()}
@@ -172,7 +173,7 @@ export default function Leaderboard() {
         )}
 
         <div className="mt-8 text-center">
-          <Link to="/" className="btn-primary">Analyze a Repo →</Link>
+          <Link to="/" className="btn-primary">{t.analyzeRepo}</Link>
         </div>
       </main>
     </div>

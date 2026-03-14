@@ -342,16 +342,16 @@ function EnrollButton({ owner, repo, isPrivate, cached }: { owner: string; repo:
   if (state === 'already') {
     return (
       <div className="text-center space-y-2">
-        <p className="text-emerald-600 text-sm">✅ Already submitted to the leaderboard</p>
+        <p className="text-emerald-600 text-sm">✅ {t.alreadySubmitted}</p>
         {cached ? (
-          <p className="text-gray-600 text-xs">Re-analyze first to update with latest commits, then re-submit.</p>
+          <p className="text-gray-600 text-xs">{t.resubmitHintCached}</p>
         ) : (
-          <p className="text-gray-600 text-xs">Got new commits? Re-submit to update your score.</p>
+          <p className="text-gray-600 text-xs">{t.resubmitHint}</p>
         )}
         <div className="flex gap-2 justify-center">
           <Link to="/leaderboard" className="btn-secondary text-sm py-1 px-3">{t.viewLeaderboard}</Link>
           <button onClick={() => setState('choosing')} className="btn-primary text-sm py-1 px-3">
-            🔄 Re-submit
+            {t.resubmit}
           </button>
         </div>
       </div>
@@ -612,7 +612,7 @@ export default function Result() {
 
         {/* Badges */}
         <div className="card">
-          <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-4">Badges</h2>
+          <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-4">{t.badges}</h2>
           <BadgesPanel owner={owner!} repo={repo!} username={username} />
         </div>
 
