@@ -61,15 +61,17 @@ function BarChart({ data, maxVal, color }: {
 function Histogram({ scores }: { scores: number[] }) {
   if (!scores.length) return <p className="text-gray-600 text-sm">No data yet.</p>
 
-  // Log-scale buckets: 0-10, 10-50, 50-100, 100-500, 500-2000, 2000-10000, 10000+
+  // Log-scale buckets — unbounded score, extend to absurdity
   const buckets = [
-    { label: '0–10', min: 0, max: 10 },
-    { label: '10–50', min: 10, max: 50 },
-    { label: '50–100', min: 50, max: 100 },
-    { label: '100–500', min: 100, max: 500 },
-    { label: '500–2k', min: 500, max: 2000 },
-    { label: '2k–10k', min: 2000, max: 10000 },
-    { label: '10k+', min: 10000, max: Infinity },
+    { label: '0–10',   min: 0,       max: 10 },
+    { label: '10–100', min: 10,      max: 100 },
+    { label: '100–500',min: 100,     max: 500 },
+    { label: '500–2k', min: 500,     max: 2000 },
+    { label: '2k–5k',  min: 2000,    max: 5000 },
+    { label: '5k–20k', min: 5000,    max: 20000 },
+    { label: '20k–100k', min: 20000, max: 100000 },
+    { label: '100k–1M', min: 100000, max: 1000000 },
+    { label: '1M+ 🤖', min: 1000000, max: Infinity },
   ]
 
   const counts = buckets.map(b => ({

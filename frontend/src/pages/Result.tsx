@@ -56,14 +56,22 @@ function BadgesPanel({ owner, repo, username }: { owner: string; repo: string; u
         const endpoint = `${BADGE_BASE}${b.endpointPath}`
         const shieldsUrl = `https://img.shields.io/endpoint?url=${encodeURIComponent(endpoint)}`
         const markdown = `[![${b.label}](${shieldsUrl})](${b.linkUrl})`
+        // user badge is grey until any repo is enrolled; repo badges grey until this repo is enrolled
+        const isUserBadge = b.key === 'user'
+        const greyHint = isUserBadge
+          ? 'Grey until you enroll any repo in the leaderboard'
+          : 'Grey until this repo is enrolled in the leaderboard — submit below ↓'
         return (
           <div key={b.key} className="bg-gray-800/60 rounded-lg px-4 py-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-400 text-xs">{b.label}</span>
+              <div>
+                <span className="text-gray-400 text-xs">{b.label}</span>
+                <p className="text-gray-600 text-xs mt-0.5">{greyHint}</p>
+              </div>
               <img
                 src={shieldsUrl}
                 alt={b.label}
-                className="h-5"
+                className="h-5 ml-3 shrink-0"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
               />
             </div>
