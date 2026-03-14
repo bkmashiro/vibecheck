@@ -524,6 +524,81 @@ function LeaderboardCTA({ score: _score, onSubmit, publicOnly }: { score: number
 
 // ── Main Result page ───────────────────────────────────────────────────────────
 
+// ── Enroll Modal ──────────────────────────────────────────────────────────────
+function EnrollModal({ owner, repo, score, onClose, onEnroll }: {
+  owner: string; repo: string; score: number; onClose: () => void; onEnroll: () => void
+}) {
+  const { emoji, colorClass } = scoreLabel(score)
+  const [provider, setProvider] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
+
+  async function submit() {
+    setLoading(true)
+    try {
+      await enrollRepo(owner, repo, provider || undefined)
+      markEnrolled(`${owner}/${repo}`)
+      setDone(true)
+      setTimeout(onEnroll, 1200)
+    } catch {}
+    setLoading(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="relative bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center"
+        onClick={e => e.stopPropagation()}
+      >
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-600 hover:text-gray-400 text-xl leading-none">✕</button>
+
+        {done ? (
+          <div className="py-4">
+            <p className="text-4xl mb-3">🎉</p>
+            <p className="text-emerald-400 font-bold text-lg">{t.enrollModalDone}</p>
+          </div>
+        ) : (
+          <>
+            <div className="text-5xl mb-2">{emoji}</div>
+            <div className={`text-4xl font-bold tabular-nums mb-1 ${colorClass}`}>{formatScore(score)}</div>
+            <p className="text-gray-500 text-sm mb-5">{t.enrollModalSubtitle}</p>
+
+            <p className="text-gray-300 font-semibold mb-1">{t.enrollModalTitle}</p>
+            <p className="text-gray-500 text-xs mb-4">{t.whichAI}</p>
+
+            <div className="grid grid-cols-3 gap-1.5 mb-5">
+              {AI_PROVIDERS.map(p => (
+                <button
+                  key={p}
+                  onClick={() => setProvider(p)}
+                  className={`text-xs px-2 py-1.5 rounded-lg border transition-colors ${
+                    provider === p
+                      ? 'border-emerald-500 bg-emerald-900/30 text-emerald-300'
+                      : 'border-gray-700 bg-gray-800/50 text-gray-400 hover:border-gray-600'
+                  }`}
+                >
+                  {PROVIDER_ICONS[p]} {p}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={submit}
+              disabled={loading}
+              className="btn-primary w-full text-base py-3 shadow-lg shadow-emerald-900/40 disabled:opacity-60"
+            >
+              {loading ? '…' : `🚀 ${t.submitLeaderboard}`}
+            </button>
+            <button onClick={onClose} className="mt-3 text-gray-600 hover:text-gray-400 text-xs transition-colors">
+              {t.enrollModalSkip}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Result() {
   const { owner, repo } = useParams<{ owner: string; repo: string }>()
   const [result, setResult] = useState<AnalysisResult | null>(null)
@@ -533,6 +608,7 @@ export default function Result() {
   const [rateLimitError, setRateLimitError] = useState<RateLimitError | null>(null)
   const [cached, setCached] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showEnrollModal, setShowEnrollModal] = useState(false)
   const isLoggedIn = !!localStorage.getItem('vibecheck_session')
   const [username, setUsername] = useState<string | undefined>(undefined)
 
@@ -567,6 +643,13 @@ export default function Result() {
           ...recent.filter((r) => r.repo !== key),
         ].slice(0, 5)
         localStorage.setItem('vibecheck_recent', JSON.stringify(recent))
+
+        // Pop enroll modal for logged-in users who haven't enrolled this repo
+        if (isLoggedIn && !getEnrolledRepos().includes(key)) {
+          checkEnrolled(owner!, repo!).then(({ enrolled }) => {
+            if (!enrolled) setTimeout(() => setShowEnrollModal(true), 1500)
+          })
+        }
       })
       .catch((err) => {
         if (err instanceof AuthRequiredError) setAuthRequired(true)
@@ -639,6 +722,15 @@ export default function Result() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {showEnrollModal && result && (
+        <EnrollModal
+          owner={owner!}
+          repo={repo!}
+          score={result.score}
+          onClose={() => setShowEnrollModal(false)}
+          onEnroll={() => setShowEnrollModal(false)}
+        />
+      )}
       <Nav />
       {/* Repo action bar */}
       <div className="border-b border-gray-800/60 px-4 sm:px-6 py-2 flex items-center justify-between bg-gray-950/80">
