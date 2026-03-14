@@ -135,16 +135,20 @@ function ScoreDisplay({ score }: { score: number }) {
       </div>
       <div className="text-gray-500 text-lg mt-1">{t.points}</div>
       <div className="text-gray-400 mt-2 text-lg">{label}</div>
-      <div className="flex items-center gap-2 mt-3 max-w-sm">
-        <span className="text-gray-500 text-sm italic flex-1 text-center">{getRoast(score, idx)}</span>
+      <div className="relative mt-3 w-72">
+        {/* fixed-width so button never shifts */}
+        <p className="text-gray-500 text-sm italic text-center px-8 min-h-[2.5rem] flex items-center justify-center">
+          {getRoast(score, idx)}
+        </p>
         <button
           onClick={() => setIdx(i => (i + 1) % total)}
-          className="shrink-0 text-gray-600 hover:text-gray-300 transition-colors p-1 rounded-full hover:bg-gray-800"
-          title="Next"
+          className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-300 transition-colors p-1.5 rounded-full hover:bg-gray-800"
+          title="Next quote"
+          aria-label="Next quote"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-            <polyline points="1 4 1 10 7 10" />
-            <path d="M3.51 15a9 9 0 1 0 .49-3.51" />
+          {/* Heroicons: arrow-path */}
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="w-4 h-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
           </svg>
         </button>
       </div>
