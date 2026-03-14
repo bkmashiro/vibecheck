@@ -128,6 +128,13 @@ The real question isn't "did you use AI?" It's "do you know what's in your codeb
 
 ---
 
+## Other Languages
+
+- [中文](./README.zh.md)
+- [日本語](./README.ja.md)
+
+---
+
 ## License
 
 MIT
