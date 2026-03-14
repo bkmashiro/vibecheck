@@ -443,6 +443,7 @@ const ui = {
     resubmit: '🔄 Re-submit',
     reposLoaded: 'repos loaded',
     missingOrg: "Can't find an org repo?",
+    loadMore: 'Load more',
     reauthorize: 'Re-authorize with GitHub →',
   },
   zh: {
@@ -549,6 +550,7 @@ const ui = {
     resubmit: '🔄 重新提交',
     reposLoaded: '个仓库已加载',
     missingOrg: '找不到组织仓库？',
+    loadMore: '加载更多',
     reauthorize: '重新授权 GitHub →',
   },
   ja: {
@@ -655,6 +657,7 @@ const ui = {
     resubmit: '🔄 再登録',
     reposLoaded: 'リポジトリを読み込み済み',
     missingOrg: 'Orgのリポジトリが見つからない？',
+    loadMore: 'もっと読む',
     reauthorize: 'GitHubで再認証 →',
   },
 }

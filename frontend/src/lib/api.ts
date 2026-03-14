@@ -139,10 +139,12 @@ export async function enrollRepo(owner: string, repo: string, ai_provider?: stri
 }
 
 export async function getLeaderboard(
-  version?: string
-): Promise<{ entries: LeaderboardEntry[]; version: ScoringVersion | null }> {
-  const url = version ? `/api/leaderboard?v=${version}` : '/api/leaderboard'
-  const res = await fetch(`${API_BASE}${url}`)
+  version?: string,
+  page = 1
+): Promise<{ entries: LeaderboardEntry[]; version: ScoringVersion | null; page: number; total: number; hasMore: boolean }> {
+  const params = new URLSearchParams({ page: String(page) })
+  if (version) params.set('v', version)
+  const res = await fetch(`${API_BASE}/api/leaderboard?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json()
 }

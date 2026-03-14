@@ -292,10 +292,22 @@ app.get('/api/leaderboard', async (c) => {
     const versions = await getAllVersions(c.env.DB)
     const versionMeta = versions.find((v) => v.version === versionStr)
 
-    const entries = await getLeaderboard(c.env.DB, versionStr, 20)
+    const PAGE_SIZE = 20
+    const page = Math.max(1, parseInt(c.req.query('page') ?? '1', 10))
+    const offset = (page - 1) * PAGE_SIZE
+
+    const [entries, countRow] = await Promise.all([
+      getLeaderboard(c.env.DB, versionStr, PAGE_SIZE, offset),
+      c.env.DB.prepare('SELECT COUNT(*) as total FROM leaderboard WHERE version = ?').bind(versionStr).first<{ total: number }>(),
+    ])
+
     return c.json({
       entries,
       version: versionMeta ?? null,
+      page,
+      pageSize: PAGE_SIZE,
+      total: countRow?.total ?? 0,
+      hasMore: offset + PAGE_SIZE < (countRow?.total ?? 0),
     })
   } catch (err: any) {
     console.error('Leaderboard error:', err)

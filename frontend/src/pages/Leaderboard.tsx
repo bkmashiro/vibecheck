@@ -34,7 +34,11 @@ export default function Leaderboard() {
   const [versions, setVersions] = useState<ScoringVersion[]>([])
   const [selectedVersion, setSelectedVersion] = useState<string | undefined>(undefined)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState('')
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
+  const [total, setTotal] = useState(0)
 
   useEffect(() => {
     getVersions().then(setVersions).catch(() => {})
@@ -43,14 +47,31 @@ export default function Leaderboard() {
   useEffect(() => {
     setLoading(true)
     setError('')
-    getLeaderboard(selectedVersion)
-      .then(({ entries: e, version: v }) => {
+    setPage(1)
+    setEntries([])
+    getLeaderboard(selectedVersion, 1)
+      .then(({ entries: e, version: v, hasMore: hm, total: tot }) => {
         setEntries(e)
         setCurrentVersion(v)
+        setHasMore(hm)
+        setTotal(tot)
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
   }, [selectedVersion])
+
+  function loadMore() {
+    const nextPage = page + 1
+    setLoadingMore(true)
+    getLeaderboard(selectedVersion, nextPage)
+      .then(({ entries: e, hasMore: hm }) => {
+        setEntries(prev => [...prev, ...e])
+        setPage(nextPage)
+        setHasMore(hm)
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false))
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -118,6 +139,8 @@ export default function Leaderboard() {
         {entries.length > 0 && (
           <div className="space-y-2">
             {entries.map((entry, i) => {
+              // global rank = offset + local index; but we append pages so i is already absolute
+              const globalRank = i
               const topSig = entry.signalsSummary?.[0]
               return (
                 <Link
@@ -128,7 +151,7 @@ export default function Leaderboard() {
                   <div className="flex items-center gap-3">
                     {/* Rank */}
                     <div className="w-8 text-center shrink-0">
-                      <RankBadge rank={i} />
+                      <RankBadge rank={globalRank} />
                     </div>
 
                     {/* Main info */}
@@ -165,6 +188,22 @@ export default function Leaderboard() {
               )
             })}
           </div>
+        )}
+
+        {/* Load more */}
+        {hasMore && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="btn-secondary px-8 py-2 disabled:opacity-50"
+            >
+              {loadingMore ? '…' : `${t.loadMore} (${entries.length} / ${total})`}
+            </button>
+          </div>
+        )}
+        {!hasMore && entries.length > 0 && (
+          <p className="text-gray-700 text-xs text-center mt-4">{entries.length} / {total} {t.commits ? '' : 'entries'}</p>
         )}
 
         <div className="mt-8 text-center">

@@ -64,7 +64,8 @@ export async function getAllVersions(db: D1Database): Promise<ScoringVersion[]> 
 export async function getLeaderboard(
   db: D1Database,
   version: string,
-  limit = 20
+  limit = 20,
+  offset = 0
 ): Promise<LeaderboardEntry[]> {
   const result = await db
     .prepare(
@@ -72,9 +73,9 @@ export async function getLeaderboard(
        FROM leaderboard
        WHERE version = ?
        ORDER BY score DESC
-       LIMIT ?`
+       LIMIT ? OFFSET ?`
     )
-    .bind(version, limit)
+    .bind(version, limit, offset)
     .all<{
       repo: string
       owner: string
