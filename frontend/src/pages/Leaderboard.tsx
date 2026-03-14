@@ -120,65 +120,54 @@ export default function Leaderboard() {
         )}
 
         {entries.length > 0 && (
-          <div className="card overflow-hidden p-0">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-                  <th className="text-left px-4 py-3 w-12">Rank</th>
-                  <th className="text-left px-4 py-3">Repo</th>
-                  <th className="text-left px-4 py-3 hidden md:table-cell">Top Signal</th>
-                  <th className="text-right px-4 py-3">Score</th>
-                  <th className="text-right px-4 py-3 hidden sm:table-cell">Commits</th>
-                  <th className="text-right px-4 py-3 hidden sm:table-cell">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((entry, i) => {
-                  const topSig = entry.signalsSummary?.[0]
-                  return (
-                    <tr
-                      key={entry.repo}
-                      className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"
-                    >
-                      <td className="px-4 py-3 text-center">
-                        <RankBadge rank={i} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <Link
-                          to={`/r/${entry.owner}/${entry.name}`}
-                          className="text-emerald-400 hover:text-emerald-300 transition-colors text-sm font-semibold"
-                        >
-                          {entry.repo}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell">
-                        {topSig ? (
-                          <span className="text-gray-500 text-xs truncate max-w-[220px] block" title={topSig.description}>
-                            {topSig.type.replace(/_/g, ' ')}: {topSig.description.slice(0, 50)}
-                            {topSig.description.length > 50 ? '…' : ''}
+          <div className="space-y-2">
+            {entries.map((entry, i) => {
+              const topSig = entry.signalsSummary?.[0]
+              return (
+                <Link
+                  key={entry.repo}
+                  to={`/r/${entry.owner}/${entry.name}`}
+                  className="block bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl px-4 py-3.5 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    {/* Rank */}
+                    <div className="w-8 text-center shrink-0">
+                      <RankBadge rank={i} />
+                    </div>
+
+                    {/* Main info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-emerald-400 font-semibold text-sm">{entry.repo}</span>
+                        {(entry as any).aiProvider && (
+                          <span className="text-xs text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded">
+                            {(entry as any).aiProvider}
                           </span>
-                        ) : (
-                          <span className="text-gray-700 text-xs">—</span>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <ScoreBadge score={entry.score} />
-                      </td>
-                      <td className="px-4 py-3 text-right hidden sm:table-cell">
-                        <span className="text-gray-600 text-xs tabular-nums">
-                          {entry.commitCount?.toLocaleString() ?? '—'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right hidden sm:table-cell">
-                        <span className="text-gray-600 text-xs">
+                      </div>
+                      {topSig && (
+                        <p className="text-gray-600 text-xs mt-0.5 truncate" title={topSig.description}>
+                          {topSig.type.replace(/_/g, ' ')}: {topSig.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Right side stats */}
+                    <div className="text-right shrink-0 space-y-0.5">
+                      <div><ScoreBadge score={entry.score} /></div>
+                      <div className="flex gap-3 justify-end">
+                        {entry.commitCount != null && (
+                          <span className="text-gray-600 text-xs">{entry.commitCount.toLocaleString()} commits</span>
+                        )}
+                        <span className="text-gray-700 text-xs">
                           {new Date(entry.analyzedAt).toLocaleDateString()}
                         </span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         )}
 

@@ -68,7 +68,7 @@ export async function getLeaderboard(
 ): Promise<LeaderboardEntry[]> {
   const result = await db
     .prepare(
-      `SELECT repo, owner, name, score, signals_summary, commit_count, analyzed_at, version
+      `SELECT repo, owner, name, score, signals_summary, commit_count, analyzed_at, version, ai_provider, language
        FROM leaderboard
        WHERE version = ?
        ORDER BY score DESC
@@ -84,6 +84,8 @@ export async function getLeaderboard(
       commit_count: number | null
       analyzed_at: number
       version: string
+      ai_provider: string | null
+      language: string | null
     }>()
 
   return (result.results ?? []).map((row) => ({
@@ -95,6 +97,8 @@ export async function getLeaderboard(
     commitCount: row.commit_count,
     analyzedAt: row.analyzed_at,
     version: row.version,
+    aiProvider: row.ai_provider,
+    language: row.language,
   }))
 }
 
@@ -105,17 +109,18 @@ export async function enrollToLeaderboard(
   score: number,
   signals: VibeSignal[],
   commitCount: number,
-  version: string
+  version: string,
+  ai_provider?: string,
+  language?: string
 ): Promise<void> {
-  // Store top 5 signals as JSON summary
   const top5 = signals.slice(0, 5)
   const signalsSummary = JSON.stringify(top5)
 
   await db
     .prepare(
       `INSERT OR REPLACE INTO leaderboard
-         (repo, version, owner, name, score, signals_summary, commit_count, analyzed_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+         (repo, version, owner, name, score, signals_summary, commit_count, analyzed_at, ai_provider, language)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       `${owner}/${repo}`,
@@ -125,7 +130,33 @@ export async function enrollToLeaderboard(
       score,
       signalsSummary,
       commitCount,
-      Date.now()
+      Date.now(),
+      ai_provider ?? null,
+      language ?? null
     )
     .run()
+}
+
+export async function getStats(db: D1Database, version: string) {
+  const [providerRows, scoreRows, totalRow] = await Promise.all([
+    db.prepare(
+      `SELECT ai_provider, COUNT(*) as count, AVG(score) as avg_score
+       FROM leaderboard WHERE version = ? AND ai_provider IS NOT NULL
+       GROUP BY ai_provider ORDER BY avg_score DESC`
+    ).bind(version).all<{ ai_provider: string; count: number; avg_score: number }>(),
+
+    db.prepare(
+      `SELECT score FROM leaderboard WHERE version = ? ORDER BY score DESC`
+    ).bind(version).all<{ score: number }>(),
+
+    db.prepare(
+      `SELECT COUNT(*) as total, AVG(score) as avg, MAX(score) as max FROM leaderboard WHERE version = ?`
+    ).bind(version).first<{ total: number; avg: number; max: number }>(),
+  ])
+
+  return {
+    providers: providerRows.results,
+    scores: scoreRows.results.map(r => r.score),
+    summary: totalRow,
+  }
 }

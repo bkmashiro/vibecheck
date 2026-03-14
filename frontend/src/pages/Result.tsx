@@ -7,9 +7,81 @@ import {
   AuthRequiredError,
   RateLimitError,
   getLoginUrl,
+  API_URL,
   type AnalysisResult,
   type VibeSignal,
 } from '../lib/api'
+
+const BADGE_BASE = API_URL
+
+function BadgesPanel({ owner, repo, username }: { owner: string; repo: string; username?: string }) {
+  const [copied, setCopied] = useState<string | null>(null)
+
+  function copy(key: string, text: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(key)
+      setTimeout(() => setCopied(null), 2000)
+    })
+  }
+
+  const badges = [
+    {
+      key: 'score',
+      label: 'Vibe Score',
+      endpointPath: `/badge/repo/${owner}/${repo}`,
+      linkUrl: `https://git-vibe.pages.dev/r/${owner}/${repo}`,
+    },
+    {
+      key: 'rank',
+      label: 'Global Rank',
+      endpointPath: `/badge/rank/${owner}/${repo}`,
+      linkUrl: `https://git-vibe.pages.dev/r/${owner}/${repo}`,
+    },
+  ]
+
+  const userBadge = username ? {
+    key: 'user',
+    label: 'My Top Vibe Repo',
+    endpointPath: `/badge/user/${username}`,
+    linkUrl: `https://git-vibe.pages.dev`,
+  } : null
+
+  const allBadges = userBadge ? [...badges, userBadge] : badges
+
+  return (
+    <div className="space-y-3">
+      {allBadges.map(b => {
+        const endpoint = `${BADGE_BASE}${b.endpointPath}`
+        const shieldsUrl = `https://img.shields.io/endpoint?url=${encodeURIComponent(endpoint)}`
+        const markdown = `[![${b.label}](${shieldsUrl})](${b.linkUrl})`
+        return (
+          <div key={b.key} className="bg-gray-800/60 rounded-lg px-4 py-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-400 text-xs">{b.label}</span>
+              <img
+                src={shieldsUrl}
+                alt={b.label}
+                className="h-5"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-xs text-gray-500 bg-gray-900 rounded px-2 py-1.5 overflow-x-auto whitespace-nowrap block">
+                {markdown}
+              </code>
+              <button
+                onClick={() => copy(b.key, markdown)}
+                className="shrink-0 text-xs px-2 py-1.5 bg-gray-700 hover:bg-gray-600 rounded transition-colors text-gray-300"
+              >
+                {copied === b.key ? '✅' : '📋'}
+              </button>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 // ── Signal labels ──────────────────────────────────────────────────────────────
 
@@ -178,11 +250,11 @@ function RateLimitBanner({ error }: { error: RateLimitError }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
       <div className="text-6xl">⏳</div>
-      <h2 className="text-2xl font-bold text-yellow-400">GitHub Rate Limit</h2>
+      <h2 className="text-2xl font-bold text-yellow-400">{t.rateLimitTitle}</h2>
       <p className="text-gray-400 text-center max-w-sm">{error.message}</p>
       {secondsLeft > 0 && (
         <div className="card text-center mt-2">
-          <p className="text-gray-500 text-sm mb-1">Resets in</p>
+          <p className="text-gray-500 text-sm mb-1">{t.rateLimitResetsIn}</p>
           <p className="text-3xl font-bold tabular-nums text-yellow-400">
             {minutes}:{String(seconds).padStart(2, '0')}
           </p>
@@ -195,15 +267,37 @@ function RateLimitBanner({ error }: { error: RateLimitError }) {
 
 // ── EnrollButton ──────────────────────────────────────────────────────────────
 
+const AI_PROVIDERS = [
+  'GitHub Copilot',
+  'ChatGPT / OpenAI',
+  'Claude',
+  'Cursor',
+  'Gemini',
+  'Windsurf',
+  'Cline',
+  'Aider',
+  'Bolt.new',
+  'v0 (Vercel)',
+  'Devin',
+  'Other',
+]
+
+const PROVIDER_ICONS: Record<string, string> = {
+  'GitHub Copilot': '🤖', 'ChatGPT / OpenAI': '🟢', 'Claude': '🟠',
+  'Cursor': '🔵', 'Gemini': '💎', 'Windsurf': '🏄', 'Cline': '🦊',
+  'Aider': '🧙', 'Bolt.new': '⚡', 'v0 (Vercel)': '▲', 'Devin': '👾', 'Other': '✨',
+}
+
 function EnrollButton({ owner, repo, isPrivate }: { owner: string; repo: string; isPrivate?: boolean }) {
-  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [state, setState] = useState<'idle' | 'choosing' | 'loading' | 'done' | 'error'>('idle')
   const [label, setLabel] = useState<string>('')
   const [errMsg, setErrMsg] = useState('')
+  const [provider, setProvider] = useState<string>('')
 
   async function handleEnroll() {
     setState('loading')
     try {
-      const result = await enrollRepo(owner, repo)
+      const result = await enrollRepo(owner, repo, provider || undefined)
       setLabel(result.label)
       setState('done')
     } catch (err: any) {
@@ -213,17 +307,14 @@ function EnrollButton({ owner, repo, isPrivate }: { owner: string; repo: string;
   }
 
   if (isPrivate) {
-    return (
-      <p className="text-gray-600 text-sm text-center">
-        🔒 Private repo — leaderboard submission not available
-      </p>
-    )
+    return <p className="text-gray-600 text-sm text-center">🔒 Private repo — leaderboard submission not available</p>
   }
 
   if (state === 'done') {
     return (
       <div className="text-center">
         <p className="text-emerald-400 font-semibold">✅ Submitted to {label} leaderboard!</p>
+        {provider && <p className="text-gray-500 text-xs mt-1">Tagged as: {PROVIDER_ICONS[provider]} {provider}</p>}
         <Link to="/leaderboard" className="text-emerald-600 hover:text-emerald-400 text-sm mt-1 block transition-colors">
           View leaderboard →
         </Link>
@@ -235,9 +326,39 @@ function EnrollButton({ owner, repo, isPrivate }: { owner: string; repo: string;
     return (
       <div className="text-center">
         <p className="text-red-400 text-sm">{errMsg}</p>
-        <button onClick={() => setState('idle')} className="text-gray-500 text-xs mt-1 hover:text-gray-300 transition-colors">
-          Try again
-        </button>
+        <button onClick={() => setState('idle')} className="text-gray-500 text-xs mt-1 hover:text-gray-300 transition-colors">{t.rateLimitRetry}</button>
+      </div>
+    )
+  }
+
+  if (state === 'choosing') {
+    return (
+      <div className="w-full max-w-xs mx-auto">
+        <p className="text-gray-400 text-sm text-center mb-3">Which AI did you use most?</p>
+        <div className="grid grid-cols-2 gap-1.5 mb-3">
+          {AI_PROVIDERS.map(p => (
+            <button
+              key={p}
+              onClick={() => setProvider(p)}
+              className={`text-xs px-3 py-2 rounded-lg border transition-colors text-left ${
+                provider === p
+                  ? 'border-emerald-500 bg-emerald-900/30 text-emerald-300'
+                  : 'border-gray-700 bg-gray-800/50 text-gray-400 hover:border-gray-600'
+              }`}
+            >
+              {PROVIDER_ICONS[p]} {p}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2 justify-center">
+          <button onClick={() => setState('idle')} className="text-gray-600 text-xs hover:text-gray-400">cancel</button>
+          <button
+            onClick={handleEnroll}
+            className="btn-primary text-sm py-1.5 px-4"
+          >
+            {provider ? `Submit with ${PROVIDER_ICONS[provider]}` : 'Submit (no tag)'}
+          </button>
+        </div>
       </div>
     )
   }
@@ -245,11 +366,10 @@ function EnrollButton({ owner, repo, isPrivate }: { owner: string; repo: string;
   return (
     <div className="text-center">
       <button
-        onClick={handleEnroll}
-        disabled={state === 'loading'}
+        onClick={() => setState('choosing')}
         className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {state === 'loading' ? t.submitting : t.submitLeaderboard}
+        {t.submitLeaderboard}
       </button>
       <p className="text-gray-600 text-xs mt-2">Only public repos can be submitted</p>
     </div>
@@ -267,8 +387,18 @@ export default function Result() {
   const [rateLimitError, setRateLimitError] = useState<RateLimitError | null>(null)
   const [cached, setCached] = useState(false)
   const [copied, setCopied] = useState(false)
+  const isLoggedIn = !!localStorage.getItem('vibecheck_session')
+  const [username, setUsername] = useState<string | undefined>(undefined)
 
-  const load = useCallback(() => {
+  useEffect(() => {
+    if (isLoggedIn) {
+      import('../lib/api').then(({ getMe }) => {
+        getMe().then(u => { if (u) setUsername(u.login) }).catch(() => {})
+      })
+    }
+  }, [isLoggedIn])
+
+  const load = useCallback((force = false) => {
     if (!owner || !repo) return
 
     setLoading(true)
@@ -276,7 +406,7 @@ export default function Result() {
     setAuthRequired(false)
     setRateLimitError(null)
 
-    analyzeRepo(owner, repo)
+    analyzeRepo(owner, repo, force)
       .then(({ data, cached: c }) => {
         setResult(data)
         setCached(c)
@@ -315,9 +445,9 @@ export default function Result() {
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <div className="text-4xl animate-spin">🔍</div>
         <p className="text-gray-400">
-          Analyzing <span className="text-emerald-400">{owner}/{repo}</span>…
+          {t.analyzing} <span className="text-emerald-400">{owner}/{repo}</span>…
         </p>
-        <p className="text-gray-600 text-sm">Single GraphQL call — fetching 100 commits</p>
+        <p className="text-gray-600 text-sm">{t.fetchingCommits}</p>
       </div>
     )
   }
@@ -327,14 +457,13 @@ export default function Result() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
         <div className="text-6xl mb-2">🔐</div>
-        <h2 className="text-2xl font-bold text-gray-100">Login Required</h2>
+        <h2 className="text-2xl font-bold text-gray-100">{t.loginRequired}</h2>
         <p className="text-gray-400 text-center max-w-sm">
-          You need to login with GitHub to analyze repos.
-          This lets us fetch commit data on your behalf.
+          {t.loginRequiredDesc}
         </p>
         <a href={getLoginUrl()} className="btn-primary mt-2">🐙 Login with GitHub</a>
         <Link to="/" className="text-gray-600 hover:text-gray-400 text-sm transition-colors">
-          ← Back to home
+          {t.back}
         </Link>
       </div>
     )
@@ -348,10 +477,10 @@ export default function Result() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
         <div className="text-4xl">😬</div>
-        <p className="text-red-400 font-semibold">Analysis failed</p>
+        <p className="text-red-400 font-semibold">{t.analysisFailed}</p>
         <p className="text-gray-500 text-sm text-center max-w-md">{error}</p>
         <div className="flex gap-3 mt-2">
-          <button onClick={load} className="btn-primary text-sm">Retry</button>
+          <button onClick={() => load(false)} className="btn-primary text-sm">Retry</button>
           <Link to="/" className="btn-secondary text-sm">← Back</Link>
         </div>
       </div>
@@ -372,10 +501,21 @@ export default function Result() {
         </Link>
         <div className="flex items-center gap-2">
           {cached && (
-            <span className="text-xs text-gray-600 bg-gray-800 px-2 py-1 rounded" title="From cache">
-              cached
-            </span>
+            <button
+              onClick={() => load(true)}
+              className="text-xs text-gray-600 bg-gray-800 hover:bg-gray-700 hover:text-gray-400 px-2 py-1 rounded transition-colors"
+              title="Click to re-analyze with latest commits"
+            >
+              cached · refresh?
+            </button>
           )}
+          <button
+            onClick={() => { load(true) }}
+            className="btn-secondary text-sm py-1.5"
+            title="Re-analyze (bypass cache)"
+          >
+            🔄
+          </button>
           <button onClick={handleShare} className="btn-secondary text-sm py-1.5">
             {copied ? '✅ Copied!' : '🔗 Share'}
           </button>
@@ -394,13 +534,26 @@ export default function Result() {
           >
             🐙 {owner}/{repo} ↗
           </a>
-          <p className="text-gray-600 text-xs mt-1">{result.commitCount} commits analyzed</p>
+          <p className="text-gray-600 text-xs mt-1">{result.commitCount} {t.commitsAnalyzed}</p>
         </div>
 
         {/* Score */}
         <div className="card">
           <ScoreDisplay score={result.score} />
         </div>
+
+        {/* CTA for visitors not logged in */}
+        {!isLoggedIn && (
+          <div className="rounded-xl border border-emerald-800/60 bg-emerald-950/30 px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <p className="text-emerald-300 font-semibold">{t.howVibeIsYours}</p>
+              <p className="text-emerald-700 text-sm mt-0.5">{t.howVibeDesc}</p>
+            </div>
+            <a href={getLoginUrl()} className="btn-primary whitespace-nowrap shrink-0">
+              🐙 Check My Repos →
+            </a>
+          </div>
+        )}
 
         {/* Breakdown */}
         <div className="card">
@@ -415,20 +568,26 @@ export default function Result() {
         {/* Signals */}
         <div className="card">
           <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-4">
-            Detected Signals ({result.signals.length})
+            {t.detectedSignals} ({result.signals.length})
           </h2>
           <SignalList signals={result.signals} />
         </div>
 
+        {/* Badges */}
+        <div className="card">
+          <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-4">Badges</h2>
+          <BadgesPanel owner={owner!} repo={repo!} username={username} />
+        </div>
+
         {/* Enroll */}
         <div className="card">
-          <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-4">Leaderboard</h2>
+          <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-4">{t.leaderboardSection}</h2>
           <EnrollButton owner={owner!} repo={repo!} />
         </div>
 
         {/* About */}
         <div className="card bg-gray-900/50">
-          <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">About the Score</h2>
+          <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">{t.aboutScore}</h2>
           <p className="text-gray-400 text-sm leading-relaxed">
             The score is <strong className="text-gray-200">unbounded</strong> — it accumulates for
             every AI signal found. A massive AI-written monorepo will score in the tens of thousands.

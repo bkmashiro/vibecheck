@@ -1,4 +1,5 @@
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
+export const API_URL = API_BASE
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -109,9 +110,11 @@ async function ghFetch(url: string, opts?: RequestInit) {
 
 export async function analyzeRepo(
   owner: string,
-  repo: string
+  repo: string,
+  force = false
 ): Promise<{ data: AnalysisResult; cached: boolean; rateLimit?: RateLimitInfo }> {
-  const res = await ghFetch(`/api/analyze/${owner}/${repo}`)
+  const url = `/api/analyze/${owner}/${repo}${force ? '?force=true' : ''}`
+  const res = await ghFetch(url)
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Unknown error' }))
     throw new Error(err.error ?? `HTTP ${res.status}`)
@@ -121,11 +124,11 @@ export async function analyzeRepo(
   return { data: json.data, cached: json.cached, rateLimit: json.rateLimit }
 }
 
-export async function enrollRepo(owner: string, repo: string): Promise<{ version: string; label: string }> {
+export async function enrollRepo(owner: string, repo: string, ai_provider?: string): Promise<{ version: string; label: string }> {
   const res = await ghFetch('/api/enroll', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ owner, repo }),
+    body: JSON.stringify({ owner, repo, ai_provider }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Unknown error' }))

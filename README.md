@@ -29,10 +29,10 @@ Show off your vibe score (or shame) in your repo's README:
 [![Top Vibe Repo](https://img.shields.io/endpoint?url=https://vibecheck-api.dylan-233.workers.dev/badge/user/YOUR_GITHUB_USERNAME)](https://git-vibe.pages.dev)
 ```
 
-**Example** (this very repo):
+**Example** (bkmashiro/redscript):
 
-[![Vibe Score](https://img.shields.io/endpoint?url=https://vibecheck-api.dylan-233.workers.dev/badge/repo/bkmashiro/vibecheck)](https://git-vibe.pages.dev/r/bkmashiro/vibecheck)
-[![Vibe Rank](https://img.shields.io/endpoint?url=https://vibecheck-api.dylan-233.workers.dev/badge/rank/bkmashiro/vibecheck)](https://git-vibe.pages.dev/r/bkmashiro/vibecheck)
+[![Vibe Score](https://img.shields.io/endpoint?url=https://vibecheck-api.dylan-233.workers.dev/badge/repo/bkmashiro/redscript)](https://git-vibe.pages.dev/r/bkmashiro/redscript)
+[![Vibe Rank](https://img.shields.io/endpoint?url=https://vibecheck-api.dylan-233.workers.dev/badge/rank/bkmashiro/redscript)](https://git-vibe.pages.dev/r/bkmashiro/redscript)
 
 ---
 

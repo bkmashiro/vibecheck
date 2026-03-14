@@ -155,6 +155,9 @@ export default function Home() {
               </button>
             ))}
           </div>
+          <Link to="/stats" className="text-gray-400 hover:text-gray-200 text-sm transition-colors">
+            📊 Stats
+          </Link>
           <Link to="/leaderboard" className="text-gray-400 hover:text-gray-200 text-sm transition-colors">
             {t.leaderboard}
           </Link>

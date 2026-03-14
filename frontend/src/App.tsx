@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import Home from './pages/Home'
 import Result from './pages/Result'
 import Leaderboard from './pages/Leaderboard'
+import Stats from './pages/Stats'
 
 function OAuthCallback() {
   const navigate = useNavigate()
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/r/:owner/:repo" element={<Result />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/stats" element={<Stats />} />
         <Route path="/callback" element={<OAuthCallback />} />
       </Routes>
     </BrowserRouter>

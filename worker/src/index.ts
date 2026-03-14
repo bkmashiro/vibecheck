@@ -14,6 +14,7 @@ import {
   getAllVersions,
   getLeaderboard,
   enrollToLeaderboard,
+  getStats,
 } from './leaderboard'
 
 type Env = {
@@ -151,16 +152,19 @@ app.get('/api/analyze/:owner/:repo', async (c) => {
   if (sessionOrResp instanceof Response) return sessionOrResp
   const { token } = sessionOrResp
 
-  // KV cache check (24h)
+  // KV cache check (24h), skip with ?force=true
+  const force = c.req.query('force') === 'true'
   const cacheKey = `analysis:${owner}/${repo}`
-  const cachedRaw = await c.env.KV.get(cacheKey)
-  if (cachedRaw) {
-    try {
-      const cached = JSON.parse(cachedRaw) as AnalysisResult
-      if (Date.now() - cached.analyzedAt < 86_400_000) {
-        return c.json({ success: true, data: cached, cached: true })
-      }
-    } catch {}
+  if (!force) {
+    const cachedRaw = await c.env.KV.get(cacheKey)
+    if (cachedRaw) {
+      try {
+        const cached = JSON.parse(cachedRaw) as AnalysisResult
+        if (Date.now() - cached.analyzedAt < 86_400_000) {
+          return c.json({ success: true, data: cached, cached: true })
+        }
+      } catch {}
+    }
   }
 
   try {
@@ -200,14 +204,14 @@ app.post('/api/enroll', async (c) => {
   const sessionOrResp = await requireSession(c)
   if (sessionOrResp instanceof Response) return sessionOrResp
 
-  let body: { owner: string; repo: string }
+  let body: { owner: string; repo: string; ai_provider?: string; language?: string }
   try {
     body = await c.req.json()
   } catch {
     return c.json({ error: 'Invalid JSON body' }, 400)
   }
 
-  const { owner, repo } = body
+  const { owner, repo, ai_provider, language } = body
   if (!owner || !repo) {
     return c.json({ error: 'owner and repo are required' }, 400)
   }
@@ -240,7 +244,9 @@ app.post('/api/enroll', async (c) => {
       result.score,
       result.signals,
       result.commitCount,
-      version.version
+      version.version,
+      ai_provider,
+      language
     )
     return c.json({ success: true, version: version.version, label: version.label })
   } catch (err: any) {
@@ -277,6 +283,18 @@ app.get('/api/leaderboard', async (c) => {
   }
 })
 
+app.get('/api/stats', async (c) => {
+  try {
+    // using top-level import
+    const version = await getCurrentVersion(c.env.DB)
+    if (!version) return c.json({ error: 'no version' }, 404)
+    const stats = await getStats(c.env.DB, version.version)
+    return c.json({ ...stats, version: version.version, label: version.label })
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500)
+  }
+})
+
 app.get('/api/versions', async (c) => {
   try {
     const versions = await getAllVersions(c.env.DB)
@@ -293,12 +311,11 @@ app.get('/badge/repo/:owner/:repo', async (c) => {
   const { owner, repo } = c.req.param()
   const fullRepo = `${owner}/${repo}`
   try {
-    const { getCurrentVersion } = await import('./leaderboard')
-    const version = await getCurrentVersion(c.env.DB)
-    const row = version
+    const ver = await getCurrentVersion(c.env.DB)
+    const row = ver
       ? await c.env.DB.prepare(
           'SELECT score FROM leaderboard WHERE repo = ? AND version = ?'
-        ).bind(fullRepo, version).first<{ score: number }>()
+        ).bind(fullRepo, ver.version).first<{ score: number }>()
       : null
 
     if (!row) {
@@ -308,8 +325,8 @@ app.get('/badge/repo/:owner/:repo', async (c) => {
     const color = score >= 2000 ? 'red' : score >= 500 ? 'orange' : score >= 100 ? 'yellow' : 'green'
     const msg = score >= 1000 ? `${(score / 1000).toFixed(1)}k pts` : `${Math.round(score)} pts`
     return c.json({ schemaVersion: 1, label: 'vibe score', message: msg, color })
-  } catch {
-    return c.json({ schemaVersion: 1, label: 'vibe score', message: 'error', color: 'lightgrey' })
+  } catch (e: any) {
+    return c.json({ schemaVersion: 1, label: 'vibe score', message: e.message ?? 'error', color: 'lightgrey' })
   }
 })
 
@@ -318,21 +335,20 @@ app.get('/badge/rank/:owner/:repo', async (c) => {
   const { owner, repo } = c.req.param()
   const fullRepo = `${owner}/${repo}`
   try {
-    const { getCurrentVersion } = await import('./leaderboard')
-    const version = await getCurrentVersion(c.env.DB)
-    if (!version) return c.json({ schemaVersion: 1, label: 'vibe rank', message: 'unranked', color: 'lightgrey' })
+    const ver = await getCurrentVersion(c.env.DB)
+    if (!ver) return c.json({ schemaVersion: 1, label: 'vibe rank', message: 'unranked', color: 'lightgrey' })
 
     const rows = await c.env.DB.prepare(
       'SELECT repo FROM leaderboard WHERE version = ? ORDER BY score DESC'
-    ).bind(version).all<{ repo: string }>()
+    ).bind(ver.version).all<{ repo: string }>()
 
     const rank = rows.results.findIndex(r => r.repo === fullRepo) + 1
     if (!rank) return c.json({ schemaVersion: 1, label: 'vibe rank', message: 'unranked', color: 'lightgrey' })
 
     const color = rank === 1 ? 'gold' : rank <= 3 ? 'orange' : rank <= 10 ? 'yellow' : 'blue'
     return c.json({ schemaVersion: 1, label: 'vibe rank', message: `#${rank} globally`, color })
-  } catch {
-    return c.json({ schemaVersion: 1, label: 'vibe rank', message: 'error', color: 'lightgrey' })
+  } catch (e: any) {
+    return c.json({ schemaVersion: 1, label: 'vibe rank', message: e.message ?? 'error', color: 'lightgrey' })
   }
 })
 
@@ -340,26 +356,25 @@ app.get('/badge/rank/:owner/:repo', async (c) => {
 app.get('/badge/user/:username', async (c) => {
   const { username } = c.req.param()
   try {
-    const { getCurrentVersion } = await import('./leaderboard')
-    const version = await getCurrentVersion(c.env.DB)
-    if (!version) return c.json({ schemaVersion: 1, label: 'top vibe repo', message: 'none', color: 'lightgrey' })
+    const ver = await getCurrentVersion(c.env.DB)
+    if (!ver) return c.json({ schemaVersion: 1, label: 'top vibe repo', message: 'none', color: 'lightgrey' })
 
-    const rows = await c.env.DB.prepare(
+    const topRepo = await c.env.DB.prepare(
       'SELECT repo, score FROM leaderboard WHERE owner = ? AND version = ? ORDER BY score DESC LIMIT 1'
-    ).bind(username, version).first<{ repo: string; score: number }>()
+    ).bind(username, ver.version).first<{ repo: string; score: number }>()
 
-    if (!rows) return c.json({ schemaVersion: 1, label: 'top vibe repo', message: 'none ranked', color: 'lightgrey' })
+    if (!topRepo) return c.json({ schemaVersion: 1, label: 'top vibe repo', message: 'none ranked', color: 'lightgrey' })
 
     const allRows = await c.env.DB.prepare(
       'SELECT repo FROM leaderboard WHERE version = ? ORDER BY score DESC'
-    ).bind(version).all<{ repo: string }>()
+    ).bind(ver.version).all<{ repo: string }>()
 
-    const globalRank = allRows.results.findIndex(r => r.repo === rows.repo) + 1
-    const repoName = rows.repo.split('/')[1]
+    const globalRank = allRows.results.findIndex(r => r.repo === topRepo.repo) + 1
+    const repoName = topRepo.repo.split('/')[1]
     const color = globalRank === 1 ? 'gold' : globalRank <= 3 ? 'orange' : globalRank <= 10 ? 'yellow' : 'blue'
-    return c.json({ schemaVersion: 1, label: `${repoName}`, message: `#${globalRank} globally`, color })
-  } catch {
-    return c.json({ schemaVersion: 1, label: 'top vibe repo', message: 'error', color: 'lightgrey' })
+    return c.json({ schemaVersion: 1, label: repoName, message: `#${globalRank} globally`, color })
+  } catch (e: any) {
+    return c.json({ schemaVersion: 1, label: 'top vibe repo', message: e.message ?? 'error', color: 'lightgrey' })
   }
 })
 
