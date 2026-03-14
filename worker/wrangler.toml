@@ -1,0 +1,16 @@
+name = "vibecheck-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[kv_namespaces]]
+binding = "KV"
+id = "TBD"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "vibecheck"
+database_id = "TBD"
+
+[vars]
+FRONTEND_URL = "https://vibecheck.pages.dev"
