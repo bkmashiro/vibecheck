@@ -148,14 +148,10 @@ app.get('/api/me/repos', async (c) => {
 app.get('/api/analyze/:owner/:repo', async (c) => {
   const owner = c.req.param('owner')
   const repo = c.req.param('repo')
-
-  const sessionOrResp = await requireSession(c)
-  if (sessionOrResp instanceof Response) return sessionOrResp
-  const { token } = sessionOrResp
-
-  // KV cache check (24h), skip with ?force=true
   const force = c.req.query('force') === 'true'
   const cacheKey = `analysis:${owner}/${repo}`
+
+  // KV cache check — serve cached results to anyone, no auth needed
   if (!force) {
     const cachedRaw = await c.env.KV.get(cacheKey)
     if (cachedRaw) {
@@ -167,6 +163,11 @@ app.get('/api/analyze/:owner/:repo', async (c) => {
       } catch {}
     }
   }
+
+  // Cache miss — need auth to call GitHub API
+  const sessionOrResp = await requireSession(c)
+  if (sessionOrResp instanceof Response) return sessionOrResp
+  const { token } = sessionOrResp
 
   try {
     const { commits, rateLimit } = await fetchCommitsGraphQL(owner, repo, token)
