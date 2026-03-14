@@ -837,11 +837,13 @@ export default function Result() {
           <BadgesPanel owner={owner!} repo={repo!} username={username} />
         </div>
 
-        {/* Enroll */}
-        <div className="card">
-          <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-4">{t.leaderboardSection}</h2>
-          <EnrollButton owner={owner!} repo={repo!} cached={cached} tampered={!!(result.oldestCommitAt && result.oldestCommitAt < new Date('2005-04-07T00:00:00Z').getTime())} />
-        </div>
+        {/* Enroll — only for logged-in users */}
+        {isLoggedIn && (
+          <div className="card">
+            <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-4">{t.leaderboardSection}</h2>
+            <EnrollButton owner={owner!} repo={repo!} cached={cached} tampered={!!(result.oldestCommitAt && result.oldestCommitAt < new Date('2005-04-07T00:00:00Z').getTime())} />
+          </div>
+        )}
 
         {/* About */}
         <div className="card bg-gray-900/50">
