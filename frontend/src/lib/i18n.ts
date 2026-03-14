@@ -7,11 +7,21 @@ export const LANGS: { code: Lang; label: string }[] = [
 ]
 
 function getLang(): Lang {
-  const stored = localStorage.getItem('vibecheck_lang') as Lang | null
-  if (stored && ['en', 'zh', 'ja'].includes(stored)) return stored
-  const nav = navigator.language.toLowerCase()
-  if (nav.startsWith('zh')) return 'zh'
-  if (nav.startsWith('ja')) return 'ja'
+  try {
+    const stored = localStorage.getItem('vibecheck_lang') as Lang | null
+    if (stored && ['en', 'zh', 'ja'].includes(stored)) return stored
+  } catch {}
+  try {
+    const navLangs = [
+      navigator.language,
+      ...(navigator.languages ?? []),
+    ].map(l => l.toLowerCase())
+    for (const nav of navLangs) {
+      if (nav.startsWith('zh')) return 'zh'
+      if (nav.startsWith('ja')) return 'ja'
+      if (nav.startsWith('en')) return 'en'
+    }
+  } catch {}
   return 'en'
 }
 
