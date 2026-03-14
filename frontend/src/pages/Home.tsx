@@ -41,7 +41,14 @@ function RepoPicker({
 
   return (
     <div className="w-full max-w-lg mt-8">
-      <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">{t.yourRepos}</h2>
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="text-sm text-gray-500 uppercase tracking-wider">{t.yourRepos}</h2>
+        <span className="text-xs text-gray-600">
+          {query
+            ? `${filtered.length} / ${repos.length}`
+            : `${repos.length} ${t.reposLoaded}`}
+        </span>
+      </div>
       <input
         className="input mb-3"
         placeholder={t.searchRepos}

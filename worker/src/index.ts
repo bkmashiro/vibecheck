@@ -102,34 +102,34 @@ app.get('/api/me/repos', async (c) => {
   const session = await resolveSession(c)
   if (!session) return c.json({ error: 'auth_required' }, 401)
 
-  const res = await fetch(
-    'https://api.github.com/user/repos?per_page=50&sort=updated&affiliation=owner,collaborator',
-    {
-      headers: {
-        Authorization: `Bearer ${session.token}`,
-        Accept: 'application/vnd.github+json',
-        'User-Agent': 'vibecheck/1.0',
-      },
-    }
-  )
-
-  if (!res.ok) {
-    return c.json({ error: `GitHub error: ${res.status}` }, 502)
+  type GHRepo = {
+    full_name: string; name: string; owner: { login: string }
+    description: string | null; private: boolean
+    stargazers_count: number; updated_at: string; language: string | null
   }
 
-  const repos: Array<{
-    full_name: string
-    name: string
-    owner: { login: string }
-    description: string | null
-    private: boolean
-    stargazers_count: number
-    updated_at: string
-    language: string | null
-  }> = await res.json()
+  const allRepos: GHRepo[] = []
+  const MAX_PAGES = 3
+
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const res = await fetch(
+      `https://api.github.com/user/repos?per_page=100&page=${page}&sort=updated&affiliation=owner,collaborator,organization_member`,
+      {
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'vibecheck/1.0',
+        },
+      }
+    )
+    if (!res.ok) return c.json({ error: `GitHub error: ${res.status}` }, 502)
+    const batch: GHRepo[] = await res.json()
+    allRepos.push(...batch)
+    if (batch.length < 100) break // last page
+  }
 
   return c.json({
-    repos: repos.map((r) => ({
+    repos: allRepos.map((r) => ({
       fullName: r.full_name,
       name: r.name,
       owner: r.owner.login,
@@ -139,6 +139,7 @@ app.get('/api/me/repos', async (c) => {
       updatedAt: r.updated_at,
       language: r.language,
     })),
+    total: allRepos.length,
   })
 })
 
