@@ -5,12 +5,12 @@ compatibility_flags = ["nodejs_compat"]
 
 [[kv_namespaces]]
 binding = "KV"
-id = "TBD"
+id = "f5334486112642d8b3f109cfed2af606"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "vibecheck"
-database_id = "TBD"
+database_id = "ad861c37-485d-4df8-ad15-04a2530d7fa0"
 
 [vars]
-FRONTEND_URL = "https://vibecheck.pages.dev"
+FRONTEND_URL = "https://git-vibe.pages.dev"

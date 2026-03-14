@@ -83,10 +83,10 @@ app.get('/auth/callback', async (c) => {
     const tokenData = await exchangeCodeForToken(code, c.env.GH_OAUTH_CLIENT_SECRET)
     const user = await getGitHubUser(tokenData.access_token)
     const sessionId = await createSession(c.env.KV, tokenData.access_token, user)
-    return c.redirect(`${frontendUrl}/?token=${sessionId}`)
+    return c.redirect(`${frontendUrl}/callback?token=${sessionId}`)
   } catch (err: any) {
     console.error('OAuth callback error:', err)
-    return c.redirect(`${frontendUrl}/?error=${encodeURIComponent(err.message)}`)
+    return c.redirect(`${frontendUrl}/callback?error=${encodeURIComponent(err.message)}`)
   }
 })
 
@@ -283,6 +283,83 @@ app.get('/api/versions', async (c) => {
     return c.json({ versions })
   } catch (err: any) {
     return c.json({ versions: [] })
+  }
+})
+
+// ── Badges (shields.io endpoint format) ────────────────────────────────────────
+
+// Repo vibe score badge: /badge/repo/:owner/:repo
+app.get('/badge/repo/:owner/:repo', async (c) => {
+  const { owner, repo } = c.req.param()
+  const fullRepo = `${owner}/${repo}`
+  try {
+    const { getCurrentVersion } = await import('./leaderboard')
+    const version = await getCurrentVersion(c.env.DB)
+    const row = version
+      ? await c.env.DB.prepare(
+          'SELECT score FROM leaderboard WHERE repo = ? AND version = ?'
+        ).bind(fullRepo, version).first<{ score: number }>()
+      : null
+
+    if (!row) {
+      return c.json({ schemaVersion: 1, label: 'vibe score', message: 'not ranked', color: 'lightgrey' })
+    }
+    const score = row.score
+    const color = score >= 2000 ? 'red' : score >= 500 ? 'orange' : score >= 100 ? 'yellow' : 'green'
+    const msg = score >= 1000 ? `${(score / 1000).toFixed(1)}k pts` : `${Math.round(score)} pts`
+    return c.json({ schemaVersion: 1, label: 'vibe score', message: msg, color })
+  } catch {
+    return c.json({ schemaVersion: 1, label: 'vibe score', message: 'error', color: 'lightgrey' })
+  }
+})
+
+// Repo rank badge: /badge/rank/:owner/:repo
+app.get('/badge/rank/:owner/:repo', async (c) => {
+  const { owner, repo } = c.req.param()
+  const fullRepo = `${owner}/${repo}`
+  try {
+    const { getCurrentVersion } = await import('./leaderboard')
+    const version = await getCurrentVersion(c.env.DB)
+    if (!version) return c.json({ schemaVersion: 1, label: 'vibe rank', message: 'unranked', color: 'lightgrey' })
+
+    const rows = await c.env.DB.prepare(
+      'SELECT repo FROM leaderboard WHERE version = ? ORDER BY score DESC'
+    ).bind(version).all<{ repo: string }>()
+
+    const rank = rows.results.findIndex(r => r.repo === fullRepo) + 1
+    if (!rank) return c.json({ schemaVersion: 1, label: 'vibe rank', message: 'unranked', color: 'lightgrey' })
+
+    const color = rank === 1 ? 'gold' : rank <= 3 ? 'orange' : rank <= 10 ? 'yellow' : 'blue'
+    return c.json({ schemaVersion: 1, label: 'vibe rank', message: `#${rank} globally`, color })
+  } catch {
+    return c.json({ schemaVersion: 1, label: 'vibe rank', message: 'error', color: 'lightgrey' })
+  }
+})
+
+// User's top repo rank badge: /badge/user/:username
+app.get('/badge/user/:username', async (c) => {
+  const { username } = c.req.param()
+  try {
+    const { getCurrentVersion } = await import('./leaderboard')
+    const version = await getCurrentVersion(c.env.DB)
+    if (!version) return c.json({ schemaVersion: 1, label: 'top vibe repo', message: 'none', color: 'lightgrey' })
+
+    const rows = await c.env.DB.prepare(
+      'SELECT repo, score FROM leaderboard WHERE owner = ? AND version = ? ORDER BY score DESC LIMIT 1'
+    ).bind(username, version).first<{ repo: string; score: number }>()
+
+    if (!rows) return c.json({ schemaVersion: 1, label: 'top vibe repo', message: 'none ranked', color: 'lightgrey' })
+
+    const allRows = await c.env.DB.prepare(
+      'SELECT repo FROM leaderboard WHERE version = ? ORDER BY score DESC'
+    ).bind(version).all<{ repo: string }>()
+
+    const globalRank = allRows.results.findIndex(r => r.repo === rows.repo) + 1
+    const repoName = rows.repo.split('/')[1]
+    const color = globalRank === 1 ? 'gold' : globalRank <= 3 ? 'orange' : globalRank <= 10 ? 'yellow' : 'blue'
+    return c.json({ schemaVersion: 1, label: `${repoName}`, message: `#${globalRank} globally`, color })
+  } catch {
+    return c.json({ schemaVersion: 1, label: 'top vibe repo', message: 'error', color: 'lightgrey' })
   }
 })
 

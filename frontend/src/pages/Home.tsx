@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { getMe, getMyRepos, getLoginUrl, type UserRepo } from '../lib/api'
+import { t, lang, setLang, LANGS } from '../lib/i18n'
 
 interface RecentAnalysis {
   repo: string
@@ -39,16 +40,16 @@ function RepoPicker({
 
   return (
     <div className="w-full max-w-lg mt-8">
-      <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">Your Repos</h2>
+      <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">{t.yourRepos}</h2>
       <input
         className="input mb-3"
-        placeholder="Search repos…"
+        placeholder={t.searchRepos}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
       <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
         {filtered.length === 0 && (
-          <p className="text-gray-600 text-sm text-center py-4">No repos match</p>
+          <p className="text-gray-600 text-sm text-center py-4">{t.noMatch}</p>
         )}
         {filtered.map((repo) => (
           <button
@@ -142,8 +143,20 @@ export default function Home() {
           <span className="text-xl font-bold text-emerald-400">VibeCheck</span>
         </div>
         <div className="flex items-center gap-3">
+          {/* Language switcher */}
+          <div className="flex gap-1">
+            {LANGS.map(l => (
+              <button
+                key={l.code}
+                onClick={() => setLang(l.code)}
+                className={`text-xs px-2 py-1 rounded transition-colors ${lang === l.code ? 'text-emerald-400 bg-gray-800' : 'text-gray-600 hover:text-gray-400'}`}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
           <Link to="/leaderboard" className="text-gray-400 hover:text-gray-200 text-sm transition-colors">
-            🏆 Leaderboard
+            {t.leaderboard}
           </Link>
           {user ? (
             <div className="flex items-center gap-2">
@@ -158,7 +171,7 @@ export default function Home() {
             </div>
           ) : (
             <a href={getLoginUrl()} className="btn-secondary text-sm py-1.5 px-3">
-              🐙 Login with GitHub
+              {t.loginBtn}
             </a>
           )}
         </div>
@@ -171,9 +184,8 @@ export default function Home() {
             <span className="text-emerald-400">Vibe</span>
             <span className="text-gray-100">Check</span>
           </h1>
-          <p className="text-gray-400 text-lg">
-            Analyze any GitHub repo's commit history and detect AI-assisted "vibe coding" patterns.
-            No score cap — the bigger the vibe, the bigger the number.
+          <p className="text-gray-400 text-lg whitespace-pre-line">
+            {t.tagline}
           </p>
         </div>
 
@@ -182,22 +194,22 @@ export default function Home() {
           <div className="flex gap-2">
             <input
               className="input flex-1"
-              placeholder="owner/repo or GitHub URL"
+              placeholder={t.placeholder}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               autoFocus
             />
             <button type="submit" className="btn-primary whitespace-nowrap">
-              Analyze →
+              {t.analyze}
             </button>
           </div>
           {inputError && <p className="text-red-400 text-sm mt-2">{inputError}</p>}
           {!user && (
             <p className="text-gray-600 text-xs mt-2 text-center">
               <a href={getLoginUrl()} className="text-emerald-600 hover:text-emerald-400 transition-colors">
-                Login with GitHub
+                {t.loginBtn}
               </a>{' '}
-              to analyze repos
+              {t.loginPrompt.replace(t.loginBtn, '').trim()}
             </p>
           )}
         </form>
@@ -216,7 +228,7 @@ export default function Home() {
         {/* Recent analyses */}
         {recent.length > 0 && (
           <div className="mt-10 w-full max-w-lg">
-            <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">Recent Analyses</h2>
+            <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-3">{t.recentAnalyses}</h2>
             <div className="space-y-2">
               {recent.map((r) => (
                 <Link
@@ -255,8 +267,27 @@ export default function Home() {
         )}
       </main>
 
-      <footer className="text-center py-6 text-gray-700 text-xs border-t border-gray-900">
-        VibeCheck — built with vibe coding 🤖
+      <footer className="text-center py-6 text-gray-700 text-xs border-t border-gray-900 space-y-1">
+        <div>VibeCheck — {t.builtWith}</div>
+        <div className="flex items-center justify-center gap-3">
+          <a
+            href="https://github.com/bkmashiro"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-500 hover:text-gray-300 transition-colors underline underline-offset-2"
+          >
+            @bkmashiro
+          </a>
+          <span className="text-gray-800">·</span>
+          <a
+            href="https://github.com/bkmashiro/vibecheck"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-500 hover:text-gray-300 transition-colors underline underline-offset-2"
+          >
+            {t.source}
+          </a>
+        </div>
       </footer>
     </div>
   )

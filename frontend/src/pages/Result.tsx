@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { t, getRoast } from '../lib/i18n'
 import {
   analyzeRepo,
   enrollRepo,
@@ -47,8 +48,9 @@ function ScoreDisplay({ score }: { score: number }) {
       <div className={`text-6xl font-bold tabular-nums ${colorClass}`}>
         {formatScore(score)}
       </div>
-      <div className="text-gray-500 text-lg mt-1">points</div>
+      <div className="text-gray-500 text-lg mt-1">{t.points}</div>
       <div className="text-gray-400 mt-2 text-lg">{label}</div>
+      <div className="text-gray-500 text-sm mt-3 italic max-w-sm text-center">{getRoast(score)}</div>
     </div>
   )
 }
@@ -247,7 +249,7 @@ function EnrollButton({ owner, repo, isPrivate }: { owner: string; repo: string;
         disabled={state === 'loading'}
         className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {state === 'loading' ? 'Submitting…' : '🏆 Submit to Leaderboard'}
+        {state === 'loading' ? t.submitting : t.submitLeaderboard}
       </button>
       <p className="text-gray-600 text-xs mt-2">Only public repos can be submitted</p>
     </div>
