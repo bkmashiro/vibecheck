@@ -476,14 +476,48 @@ function EnrollButton({ owner, repo, isPrivate, cached, tampered }: { owner: str
   }
 
   return (
-    <div className="text-center">
+    <LeaderboardCTA score={0} onSubmit={() => setState('choosing')} publicOnly={t.publicOnly} />
+  )
+}
+
+function LeaderboardCTA({ score: _score, onSubmit, publicOnly }: { score: number; onSubmit: () => void; publicOnly: string }) {
+  // score not passed yet here; motivational copy is tier-agnostic at idle state
+  const lines: [string, string][] = [
+    ['🏆', t.ctaLine1 ?? 'Your repo is analyzed. Time to claim your spot.'],
+    ['👀', t.ctaLine2 ?? 'The leaderboard is public. Your rivals might already be on it.'],
+    ['⚡', t.ctaLine3 ?? "One click. That's all it takes."],
+  ]
+  const [visibleIdx, setVisibleIdx] = useState(0)
+
+  useEffect(() => {
+    const id = setInterval(() => setVisibleIdx(i => (i + 1) % lines.length), 2800)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      {/* Rotating motivational line */}
+      <div className="h-8 overflow-hidden relative w-full">
+        {lines.map(([icon, text], i) => (
+          <p
+            key={i}
+            className={`absolute inset-0 flex items-center justify-center gap-2 text-sm transition-all duration-500 ${
+              i === visibleIdx ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+            }`}
+          >
+            <span>{icon}</span>
+            <span className="text-gray-400">{text}</span>
+          </p>
+        ))}
+      </div>
+
       <button
-        onClick={() => setState('choosing')}
-        className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+        onClick={onSubmit}
+        className="btn-primary text-base py-3 px-8 shadow-lg shadow-emerald-900/40 hover:shadow-emerald-700/50 transition-shadow"
       >
-        {t.submitLeaderboard}
+        🚀 {t.submitLeaderboard}
       </button>
-      <p className="text-gray-600 text-xs mt-2">{t.publicOnly}</p>
+      <p className="text-gray-700 text-xs">{publicOnly}</p>
     </div>
   )
 }
