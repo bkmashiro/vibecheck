@@ -288,8 +288,24 @@ const PROVIDER_ICONS: Record<string, string> = {
   'Aider': '🧙', 'Bolt.new': '⚡', 'v0 (Vercel)': '▲', 'Devin': '👾', 'Other': '✨',
 }
 
-function EnrollButton({ owner, repo, isPrivate }: { owner: string; repo: string; isPrivate?: boolean }) {
-  const [state, setState] = useState<'idle' | 'choosing' | 'loading' | 'done' | 'error'>('idle')
+const ENROLLED_KEY = 'vibecheck_enrolled' // localStorage: JSON array of "owner/repo"
+
+function getEnrolledRepos(): string[] {
+  try { return JSON.parse(localStorage.getItem(ENROLLED_KEY) ?? '[]') } catch { return [] }
+}
+function markEnrolled(fullRepo: string) {
+  const list = getEnrolledRepos()
+  if (!list.includes(fullRepo)) {
+    localStorage.setItem(ENROLLED_KEY, JSON.stringify([...list, fullRepo]))
+  }
+}
+
+function EnrollButton({ owner, repo, isPrivate, cached }: { owner: string; repo: string; isPrivate?: boolean; cached?: boolean }) {
+  const fullRepo = `${owner}/${repo}`
+  const alreadyEnrolled = getEnrolledRepos().includes(fullRepo)
+  const [state, setState] = useState<'idle' | 'already' | 'choosing' | 'loading' | 'done' | 'error'>(
+    alreadyEnrolled ? 'already' : 'idle'
+  )
   const [label, setLabel] = useState<string>('')
   const [errMsg, setErrMsg] = useState('')
   const [provider, setProvider] = useState<string>('')
@@ -299,6 +315,7 @@ function EnrollButton({ owner, repo, isPrivate }: { owner: string; repo: string;
     try {
       const result = await enrollRepo(owner, repo, provider || undefined)
       setLabel(result.label)
+      markEnrolled(fullRepo)
       setState('done')
     } catch (err: any) {
       setErrMsg(err.message)
@@ -307,17 +324,36 @@ function EnrollButton({ owner, repo, isPrivate }: { owner: string; repo: string;
   }
 
   if (isPrivate) {
-    return <p className="text-gray-600 text-sm text-center">🔒 Private repo — leaderboard submission not available</p>
+    return <p className="text-gray-600 text-sm text-center">{t.privateRepo}</p>
   }
 
   if (state === 'done') {
     return (
       <div className="text-center">
         <p className="text-emerald-400 font-semibold">✅ Submitted to {label} leaderboard!</p>
-        {provider && <p className="text-gray-500 text-xs mt-1">Tagged as: {PROVIDER_ICONS[provider]} {provider}</p>}
+        {provider && <p className="text-gray-500 text-xs mt-1">{t.taggedAs} {PROVIDER_ICONS[provider]} {provider}</p>}
         <Link to="/leaderboard" className="text-emerald-600 hover:text-emerald-400 text-sm mt-1 block transition-colors">
-          View leaderboard →
+          {t.viewLeaderboard}
         </Link>
+      </div>
+    )
+  }
+
+  if (state === 'already') {
+    return (
+      <div className="text-center space-y-2">
+        <p className="text-emerald-600 text-sm">✅ Already submitted to the leaderboard</p>
+        {cached ? (
+          <p className="text-gray-600 text-xs">Re-analyze first to update with latest commits, then re-submit.</p>
+        ) : (
+          <p className="text-gray-600 text-xs">Got new commits? Re-submit to update your score.</p>
+        )}
+        <div className="flex gap-2 justify-center">
+          <Link to="/leaderboard" className="btn-secondary text-sm py-1 px-3">{t.viewLeaderboard}</Link>
+          <button onClick={() => setState('choosing')} className="btn-primary text-sm py-1 px-3">
+            🔄 Re-submit
+          </button>
+        </div>
       </div>
     )
   }
@@ -334,7 +370,7 @@ function EnrollButton({ owner, repo, isPrivate }: { owner: string; repo: string;
   if (state === 'choosing') {
     return (
       <div className="w-full max-w-xs mx-auto">
-        <p className="text-gray-400 text-sm text-center mb-3">Which AI did you use most?</p>
+        <p className="text-gray-400 text-sm text-center mb-3">{t.whichAI}</p>
         <div className="grid grid-cols-2 gap-1.5 mb-3">
           {AI_PROVIDERS.map(p => (
             <button
@@ -351,12 +387,13 @@ function EnrollButton({ owner, repo, isPrivate }: { owner: string; repo: string;
           ))}
         </div>
         <div className="flex gap-2 justify-center">
-          <button onClick={() => setState('idle')} className="text-gray-600 text-xs hover:text-gray-400">cancel</button>
+          <button onClick={() => setState(alreadyEnrolled ? 'already' : 'idle')} className="text-gray-600 text-xs hover:text-gray-400">{t.cancelBtn}</button>
           <button
             onClick={handleEnroll}
+            disabled={state === ('loading' as string)}
             className="btn-primary text-sm py-1.5 px-4"
           >
-            {provider ? `Submit with ${PROVIDER_ICONS[provider]}` : 'Submit (no tag)'}
+            {provider ? `${t.submitWithAI} ${PROVIDER_ICONS[provider]}` : t.submitNoTag}
           </button>
         </div>
       </div>
@@ -371,7 +408,7 @@ function EnrollButton({ owner, repo, isPrivate }: { owner: string; repo: string;
       >
         {t.submitLeaderboard}
       </button>
-      <p className="text-gray-600 text-xs mt-2">Only public repos can be submitted</p>
+      <p className="text-gray-600 text-xs mt-2">{t.publicOnly}</p>
     </div>
   )
 }
@@ -582,7 +619,7 @@ export default function Result() {
         {/* Enroll */}
         <div className="card">
           <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-4">{t.leaderboardSection}</h2>
-          <EnrollButton owner={owner!} repo={repo!} />
+          <EnrollButton owner={owner!} repo={repo!} cached={cached} />
         </div>
 
         {/* About */}

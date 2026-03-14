@@ -1,5 +1,7 @@
 # VibeCheck 🔍
 
+**[中文](./README.zh.md) | [日本語](./README.ja.md)**
+
 > **How AI is your codebase, really?**
 >
 > You say you wrote it. Your commits say otherwise.
@@ -7,6 +9,9 @@
 VibeCheck analyzes your git commit history and detects the unmistakable fingerprints of AI-assisted coding — superhuman typing speeds, suspiciously perfect commit bursts, fix-fix-fix chains that no human debugs that fast, and the telltale `Co-Authored-By: Claude` you forgot to scrub.
 
 **[→ Try it at git-vibe.pages.dev](https://git-vibe.pages.dev)**
+
+[![Vibe Score](https://img.shields.io/endpoint?url=https://vibecheck-api.dylan-233.workers.dev/badge/repo/bkmashiro/vibecheck)](https://git-vibe.pages.dev/r/bkmashiro/vibecheck)
+[![Vibe Rank](https://img.shields.io/endpoint?url=https://vibecheck-api.dylan-233.workers.dev/badge/rank/bkmashiro/vibecheck)](https://git-vibe.pages.dev/r/bkmashiro/vibecheck)
 
 ---
 
