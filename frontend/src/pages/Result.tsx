@@ -391,9 +391,9 @@ function EnrollButton({ owner, repo, isPrivate, cached, tampered }: { owner: str
 
   if (tampered) {
     return (
-      <div className="text-center space-y-2 py-2">
-        <p className="text-red-500 text-sm font-bold">⛔ 时间戳异常，禁止提交</p>
-        <p className="text-gray-600 text-xs">你他妈是来捣乱的吧</p>
+      <div className="text-center space-y-1 py-2">
+        <p className="text-red-500 text-sm font-bold">{t.tamperBtnLabel}</p>
+        <p className="text-gray-600 text-xs">{t.tamperHeadline}</p>
       </div>
     )
   }
@@ -693,14 +693,9 @@ export default function Result() {
         {/* Tampering detection */}
         {result.oldestCommitAt && result.oldestCommitAt < new Date('2005-04-07T00:00:00Z').getTime() && (
           <div className="rounded-xl border border-red-800/60 bg-red-950/30 px-6 py-5 text-center">
-            <p className="text-red-400 text-xl font-bold mb-2">⛔ 你他妈是来捣乱的吧</p>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              这个仓库有早于 <span className="text-gray-200 font-mono">2005-04-07</span> 的 commit 时间戳，
-              比 git 本身的诞生日期还早。<br />
-              Linus Torvalds 那天才写了第一个 git commit（<span className="font-mono text-gray-500">e83c5163</span>）。<br /><br />
-              所以要么是时光机，要么你改了时间戳。我们选择相信不是时光机。<br />
-              <span className="text-red-600 font-semibold">此仓库无法提交到排行榜。</span>
-            </p>
+            <p className="text-red-400 text-xl font-bold mb-2">{t.tamperHeadline}</p>
+            <p className="text-gray-400 text-sm leading-relaxed mb-2">{t.tamperBody}</p>
+            <p className="text-red-600 font-semibold text-sm">{t.tamperBlock}</p>
           </div>
         )}
 
