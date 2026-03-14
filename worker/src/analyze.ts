@@ -28,6 +28,7 @@ export interface AnalysisResult {
   commitCount: number
   latestSha: string
   analyzedAt: number
+  oldestCommitAt: number  // Unix ms of earliest commit
   // breakdown for display
   breakdown: ScoreBreakdown
 }
@@ -228,6 +229,7 @@ export function analyzeVibe(commits: CommitData[]): AnalysisResult {
       commitCount: 0,
       latestSha: '',
       analyzedAt: Date.now(),
+      oldestCommitAt: Date.now(),
       breakdown: {
         burstSignals: 0,
         lineVolume: 0,
@@ -391,6 +393,10 @@ export function analyzeVibe(commits: CommitData[]): AnalysisResult {
   const timeline = buildTimeline(commits, deduped)
   const latestSha = commits[commits.length - 1].sha
 
+  const oldestCommitAt = commits.length > 0
+    ? Math.min(...commits.map(c => c.timestamp))
+    : Date.now()
+
   return {
     score,
     signals: sortedSignals.slice(0, 20),
@@ -398,6 +404,7 @@ export function analyzeVibe(commits: CommitData[]): AnalysisResult {
     commitCount: commits.length,
     latestSha,
     analyzedAt: Date.now(),
+    oldestCommitAt,
     breakdown,
   }
 }

@@ -27,6 +27,7 @@ export interface AnalysisResult {
   commitCount: number
   latestSha: string
   analyzedAt: number
+  oldestCommitAt: number
   breakdown: ScoreBreakdown
 }
 

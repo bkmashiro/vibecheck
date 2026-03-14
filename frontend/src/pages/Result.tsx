@@ -342,7 +342,7 @@ function markEnrolled(fullRepo: string) {
   }
 }
 
-function EnrollButton({ owner, repo, isPrivate, cached }: { owner: string; repo: string; isPrivate?: boolean; cached?: boolean }) {
+function EnrollButton({ owner, repo, isPrivate, cached, tampered }: { owner: string; repo: string; isPrivate?: boolean; cached?: boolean; tampered?: boolean }) {
   const fullRepo = `${owner}/${repo}`
   const localEnrolled = getEnrolledRepos().includes(fullRepo)
   const [state, setState] = useState<'idle' | 'checking' | 'already' | 'choosing' | 'loading' | 'done' | 'error'>(
@@ -379,6 +379,15 @@ function EnrollButton({ owner, repo, isPrivate, cached }: { owner: string; repo:
 
   if (isPrivate) {
     return <p className="text-gray-600 text-sm text-center">{t.privateRepo}</p>
+  }
+
+  if (tampered) {
+    return (
+      <div className="text-center space-y-2 py-2">
+        <p className="text-red-500 text-sm font-bold">⛔ 时间戳异常，禁止提交</p>
+        <p className="text-gray-600 text-xs">你他妈是来捣乱的吧</p>
+      </div>
+    )
   }
 
   if (state === 'checking') {
@@ -639,6 +648,20 @@ export default function Result() {
           <p className="text-gray-600 text-xs mt-1">{result.commitCount} {t.commitsAnalyzed}</p>
         </div>
 
+        {/* Tampering detection */}
+        {result.oldestCommitAt && result.oldestCommitAt < new Date('2005-04-07T00:00:00Z').getTime() && (
+          <div className="rounded-xl border border-red-800/60 bg-red-950/30 px-6 py-5 text-center">
+            <p className="text-red-400 text-xl font-bold mb-2">⛔ 你他妈是来捣乱的吧</p>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              这个仓库有早于 <span className="text-gray-200 font-mono">2005-04-07</span> 的 commit 时间戳，
+              比 git 本身的诞生日期还早。<br />
+              Linus Torvalds 那天才写了第一个 git commit（<span className="font-mono text-gray-500">e83c5163</span>）。<br /><br />
+              所以要么是时光机，要么你改了时间戳。我们选择相信不是时光机。<br />
+              <span className="text-red-600 font-semibold">此仓库无法提交到排行榜。</span>
+            </p>
+          </div>
+        )}
+
         {/* Score */}
         <div className="card">
           <ScoreDisplay score={result.score} />
@@ -684,7 +707,7 @@ export default function Result() {
         {/* Enroll */}
         <div className="card">
           <h2 className="text-sm text-gray-500 uppercase tracking-wider mb-4">{t.leaderboardSection}</h2>
-          <EnrollButton owner={owner!} repo={repo!} cached={cached} />
+          <EnrollButton owner={owner!} repo={repo!} cached={cached} tampered={!!(result.oldestCommitAt && result.oldestCommitAt < new Date('2005-04-07T00:00:00Z').getTime())} />
         </div>
 
         {/* About */}
