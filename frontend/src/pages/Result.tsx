@@ -637,16 +637,18 @@ export default function Result() {
         setResult(data)
         setCached(c)
 
-        // Save to recent
+        // Save to recent — only for logged-in users
         const key = `${owner}/${repo}`
-        const stored = localStorage.getItem('vibecheck_recent')
-        let recent: Array<{ repo: string; score: number; analyzedAt: number }> = []
-        try { recent = JSON.parse(stored ?? '[]') } catch {}
-        recent = [
-          { repo: key, score: data.score, analyzedAt: data.analyzedAt },
-          ...recent.filter((r) => r.repo !== key),
-        ].slice(0, 5)
-        localStorage.setItem('vibecheck_recent', JSON.stringify(recent))
+        if (isLoggedIn) {
+          const stored = localStorage.getItem('vibecheck_recent')
+          let recent: Array<{ repo: string; score: number; analyzedAt: number }> = []
+          try { recent = JSON.parse(stored ?? '[]') } catch {}
+          recent = [
+            { repo: key, score: data.score, analyzedAt: data.analyzedAt },
+            ...recent.filter((r) => r.repo !== key),
+          ].slice(0, 5)
+          localStorage.setItem('vibecheck_recent', JSON.stringify(recent))
+        }
 
         // Pop enroll modal for logged-in users who haven't enrolled this repo
         if (isLoggedIn && !getEnrolledRepos().includes(key)) {
@@ -747,7 +749,7 @@ export default function Result() {
           {owner}/{repo} ↗
         </a>
         <div className="flex items-center gap-1.5">
-          {cached ? (
+          {isLoggedIn && (cached ? (
             <button
               onClick={() => load(true)}
               className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-yellow-600/50 bg-yellow-900/20 text-yellow-400 hover:bg-yellow-900/40 hover:border-yellow-500 transition-colors"
@@ -765,7 +767,7 @@ export default function Result() {
             >
               🔄
             </button>
-          )}
+          ))}
           <button onClick={handleShare} className="btn-secondary text-xs py-1 px-2.5">
             {copied ? t.copied : t.share}
           </button>
