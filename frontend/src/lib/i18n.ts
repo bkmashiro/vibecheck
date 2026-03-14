@@ -226,9 +226,11 @@ const ui = {
     resubmitHintCached: 'Re-analyze first to update with latest commits, then re-submit.',
     resubmitHint: 'Got new commits? Re-submit to update your score.',
     resubmit: '🔄 Re-submit',
+    missingOrg: "Can't find an org repo?",
+    reauthorize: 'Re-authorize with GitHub →',
   },
   zh: {
-    tagline: '分析任意 GitHub 仓库的 commit 历史，检测 AI 辅助的「Vibe Coding」痕迹。\n分数无上限——越 vibe，分越高。',
+    tagline: '分析任意 GitHub 仓库的 commit 历史，检测 AI 辅助的「Vibe Coding」痕迹。分数无上限——越 vibe，分越高。',
     placeholder: 'owner/repo 或 GitHub 链接',
     analyze: '分析 →',
     loginPrompt: '登录 GitHub 后才能分析仓库',
@@ -318,9 +320,11 @@ const ui = {
     resubmitHintCached: '先重新分析获取最新 commit，然后再次提交更新分数。',
     resubmitHint: '有新 commit？重新提交更新分数。',
     resubmit: '🔄 重新提交',
+    missingOrg: '找不到组织仓库？',
+    reauthorize: '重新授权 GitHub →',
   },
   ja: {
-    tagline: 'GitHubリポジトリのコミット履歴を分析し、AIアシストの「Vibe Coding」パターンを検出。\nスコア上限なし──vibeが大きいほど、数字も大きい。',
+    tagline: 'GitHubリポジトリのコミット履歴を分析し、AIアシストの「Vibe Coding」パターンを検出。スコア上限なし──vibeが大きいほど、数字も大きい。',
     placeholder: 'owner/repo または GitHub URL',
     analyze: '分析 →',
     loginPrompt: 'リポジトリを分析するにはGitHubでログインしてください',
@@ -410,6 +414,8 @@ const ui = {
     resubmitHintCached: '最新コミットを取得するために再分析してから再登録してください。',
     resubmitHint: '新しいコミットがある？再登録してスコアを更新しよう。',
     resubmit: '🔄 再登録',
+    missingOrg: 'Orgのリポジトリが見つからない？',
+    reauthorize: 'GitHubで再認証 →',
   },
 }
 

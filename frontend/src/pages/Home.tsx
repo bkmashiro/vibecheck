@@ -180,7 +180,15 @@ export default function Home() {
             {reposLoading ? (
               <p className="text-gray-600 text-sm text-center mt-8">{t.loadingRepos}</p>
             ) : repos.length > 0 ? (
-              <RepoPicker repos={repos} onSelect={navigateTo} />
+              <>
+                <RepoPicker repos={repos} onSelect={navigateTo} />
+                <p className="text-gray-700 text-xs text-center mt-3">
+                  {t.missingOrg}{' '}
+                  <a href={getLoginUrl()} className="text-gray-500 hover:text-emerald-400 underline underline-offset-2 transition-colors">
+                    {t.reauthorize}
+                  </a>
+                </p>
+              </>
             ) : null}
           </div>
         )}
