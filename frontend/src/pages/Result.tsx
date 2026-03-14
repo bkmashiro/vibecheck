@@ -182,18 +182,26 @@ function TimelineChart({ timeline }: { timeline: AnalysisResult['timeline'] }) {
         {shown.map((bucket) => {
           const height = Math.max(3, (bucket.commits / maxCommits) * 64)
           const hasSignal = bucket.score > 0
+          // Parse: new format = Unix ms string; legacy = "YYYY-MM-DD HH:00"
+          const ts = Number(bucket.hour)
+          const d = !isNaN(ts) && ts > 1e10 ? new Date(ts) : null
+          const localFull = d
+            ? d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+            : bucket.hour
+          const localDate = d
+            ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+            : bucket.hour.split(' ')[0] ?? ''
           return (
             <div
               key={bucket.hour}
               className="flex-1 relative group cursor-default"
-              title={`${bucket.hour}\n${bucket.commits} commits${hasSignal ? '\n⚠️ signals' : ''}`}
             >
               <div
                 className={`w-full rounded-sm ${hasSignal ? 'bg-red-500' : 'bg-emerald-800'}`}
                 style={{ height: `${height}px` }}
               />
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10 whitespace-nowrap bg-gray-800 text-xs text-gray-200 px-2 py-1 rounded shadow-lg pointer-events-none">
-                {bucket.hour.split(' ')[1] ?? bucket.hour}<br />
+                {localFull}<br />
                 {bucket.commits} commit{bucket.commits !== 1 ? 's' : ''}
                 {hasSignal && <><br />⚠️ {formatScore(bucket.score)} pts</>}
               </div>
@@ -202,8 +210,8 @@ function TimelineChart({ timeline }: { timeline: AnalysisResult['timeline'] }) {
         })}
       </div>
       <div className="flex justify-between text-xs text-gray-600 mt-1">
-        <span>{shown[0]?.hour.split(' ')[0] ?? ''}</span>
-        <span>{shown[shown.length - 1]?.hour.split(' ')[0] ?? ''}</span>
+        <span>{(() => { const ts = Number(shown[0]?.hour); const d = !isNaN(ts) && ts > 1e10 ? new Date(ts) : null; return d ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : shown[0]?.hour.split(' ')[0] ?? '' })()}</span>
+        <span>{(() => { const ts = Number(shown[shown.length-1]?.hour); const d = !isNaN(ts) && ts > 1e10 ? new Date(ts) : null; return d ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : shown[shown.length-1]?.hour.split(' ')[0] ?? '' })()}</span>
       </div>
       <div className="flex gap-4 mt-2 text-xs text-gray-600">
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-emerald-800 rounded-sm inline-block" /> Normal</span>
@@ -213,15 +221,22 @@ function TimelineChart({ timeline }: { timeline: AnalysisResult['timeline'] }) {
   )
 }
 
+const SIGNALS_PREVIEW = 5
+
 function SignalList({ signals }: { signals: VibeSignal[] }) {
+  const [expanded, setExpanded] = useState(false)
   if (signals.length === 0) return <p className="text-gray-600 text-sm">No suspicious signals detected.</p>
+
+  const shown = expanded ? signals : signals.slice(0, SIGNALS_PREVIEW)
+  const hidden = signals.length - SIGNALS_PREVIEW
+
   return (
     <div className="space-y-2">
-      {signals.map((sig, i) => {
+      {shown.map((sig, i) => {
         const meta = SIGNAL_META[sig.type]
         return (
           <div key={i} className="flex items-start gap-3 bg-gray-800/50 rounded-lg p-3">
-            <span className={`text-sm font-semibold shrink-0 min-w-[150px] ${meta.color}`}>
+            <span className={`text-sm font-semibold shrink-0 min-w-[130px] ${meta.color}`}>
               {meta.label}
             </span>
             <span className="text-sm text-gray-400 flex-1 min-w-0 break-words">{sig.description}</span>
@@ -234,6 +249,16 @@ function SignalList({ signals }: { signals: VibeSignal[] }) {
           </div>
         )
       })}
+      {signals.length > SIGNALS_PREVIEW && (
+        <button
+          onClick={() => setExpanded(e => !e)}
+          className="w-full text-center text-xs text-gray-500 hover:text-gray-300 py-2 border border-gray-800 hover:border-gray-700 rounded-lg transition-colors"
+        >
+          {expanded
+            ? '▲ Show less'
+            : `▼ Show ${hidden} more signal${hidden > 1 ? 's' : ''}`}
+        </button>
+      )}
     </div>
   )
 }

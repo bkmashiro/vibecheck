@@ -201,22 +201,22 @@ function buildTimeline(
     }
   }
 
-  const buckets = new Map<string, { score: number; commits: number }>()
+  // bucket by UTC hour — store as Unix ms (start of each hour) so frontend can localise
+  const buckets = new Map<number, { score: number; commits: number }>()
 
   for (const commit of commits) {
     const d = new Date(commit.timestamp)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-      d.getDate()
-    ).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:00`
-    const bucket = buckets.get(key) ?? { score: 0, commits: 0 }
+    // round down to the nearest hour (UTC)
+    const hourStart = Math.floor(d.getTime() / 3_600_000) * 3_600_000
+    const bucket = buckets.get(hourStart) ?? { score: 0, commits: 0 }
     bucket.commits++
     bucket.score += signalMap.get(commit.sha) ?? 0
-    buckets.set(key, bucket)
+    buckets.set(hourStart, bucket)
   }
 
   return Array.from(buckets.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([hour, v]) => ({ hour, ...v }))
+    .sort(([a], [b]) => a - b)
+    .map(([ts, v]) => ({ hour: String(ts), ...v }))
 }
 
 export function analyzeVibe(commits: CommitData[]): AnalysisResult {
