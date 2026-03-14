@@ -40,18 +40,36 @@ const roasts: Record<Lang, Record<RoastLevel, string[]>> = {
       "GitHub Copilot calls YOU for help.",
       "Your commit history reads like a manifesto written by the machines.",
       "At this point, are you even IN the loop? 🤖",
+      "The AI has achieved sentience. You just paid the API bill.",
+      "500 lines in 47 seconds. Bold strategy. Paid off.",
+      "Your codebase is 99% vibes and 1% prayer that it compiles.",
+      "Legend says the AI is still generating features you haven't deployed yet.",
+      "You have transcended 'developer'. You are now a 'prompt architect'.",
+      "Even the tests were written by AI. The irony is not lost on us.",
     ],
     heavy: [
       "Impressive. Your AI does all the heavy lifting while you write the prompts.",
       "A strong AI collaboration. Or just vibing really hard.",
       "The diff doesn't lie. Neither does the typing speed.",
       "You didn't write code. You directed it.",
+      "Your commit messages are suspiciously eloquent for 2 AM.",
+      "AI pair programmer detected. Who's actually driving here?",
+      "The code quality is surprisingly good for someone typing 800 lines/min.",
+      "This is not vibe coding. This is vibe architecture.",
+      "We see the co-authored-by tags. We salute them.",
+      "You're one of the good ones. The AI-assisted good ones.",
     ],
     mixed: [
       "A little AI, a little human. We respect the hustle. Barely.",
       "Half human, half robot — peak 2025 developer.",
       "You're using AI but at least you're pretending to code.",
       "The commit timestamps suggest some actual thinking happened. Suspicious.",
+      "You're living in the balanced timeline. Most aren't.",
+      "Using AI for the boring parts and suffering through the fun ones. Respect.",
+      "The fix-fix chain in April was very human of you.",
+      "Sometimes you prompt, sometimes you type. Versatile.",
+      "Somewhere between 'I wrote this' and 'I oversaw this'.",
+      "This is what healthy AI collaboration looks like. Probably.",
     ],
     human: [
       "Touching grass detected. Are you okay? 💀",
@@ -59,6 +77,11 @@ const roasts: Record<Lang, Record<RoastLevel, string[]>> = {
       "Rare specimen: human-coded repository. Almost extinct.",
       "Have you heard of ChatGPT? Just asking.",
       "This is painfully hand-crafted. Respect, but also, why?",
+      "Your fingers must be exhausted. Go lie down.",
+      "No AI was harmed in the making of this codebase.",
+      "We checked three times. Still no robots. Unbelievable.",
+      "You write code the old-fashioned way. With suffering.",
+      "This repo predates the vibe. A relic. A treasure.",
     ],
   },
   zh: {
@@ -67,18 +90,36 @@ const roasts: Record<Lang, Record<RoastLevel, string[]>> = {
       "GitHub Copilot 反过来向你学习。",
       "你的 commit 记录就是机器写给未来的遗言。",
       "说实话，你还在 loop 里面吗？🤖",
+      "AI 已经觉醒，你只是在帮它付 API 账单。",
+      "47 秒 500 行。牛逼，真的牛逼。",
+      "你的代码库 99% 是 vibe，1% 是祈祷它能编译。",
+      "传说 AI 还在继续生成你还没来得及部署的 feature。",
+      "你已经超越「开发者」，成为了「提示词架构师」。",
+      "就连测试都是 AI 写的。讽刺意味你懂的。",
     ],
     heavy: [
       "AI 干活，你出主意——这才是最优生产力配置。",
       "重度 vibe coding，不接受反驳。",
       "diff 不说谎，打字速度也不说谎。",
       "你没在写代码，你在指挥代码。",
+      "凌晨两点的 commit message 写得这么流畅，可疑。",
+      "检测到 AI 结对编程，谁才是主驾？",
+      "800 行/分钟还能保证代码质量，厉害了。",
+      "这不是 vibe coding，这是 vibe 架构设计。",
+      "我们看到 Co-Authored-By 了。我们向它们致敬。",
+      "你是 AI 辅助开发者里最好的那种。",
     ],
     mixed: [
       "一半人工，一半智能，中庸之道。勉强及格。",
       "半人半机器，2025 年标准开发者形态。",
       "你有用 AI，但还在假装自己在写代码，我喜欢这种精神。",
       "commit 时间戳显示你可能真的有在思考。可疑。",
+      "你活在平衡时间线里，大多数人没有。",
+      "用 AI 搞定无聊的，自己折磨自己搞有趣的。尊重。",
+      "四月那个 fix-fix 链非常人性化。",
+      "有时候提示，有时候自己打，灵活。",
+      "处于「我写的」和「我监督的」之间的某个地方。",
+      "这大概就是健康的 AI 协作吧。大概。",
     ],
     human: [
       "检测到你在接触现实世界。你还好吗？💀",
@@ -86,6 +127,11 @@ const roasts: Record<Lang, Record<RoastLevel, string[]>> = {
       "珍稀物种：纯人工仓库。已濒临灭绝。",
       "你听说过 ChatGPT 吗？随便问问。",
       "这代码写得太用心了。尊重，但是，为什么？",
+      "你的手指一定累坏了。去躺着吧。",
+      "这个仓库的制作过程中没有 AI 受到伤害。",
+      "我们查了三遍。真的没有机器人。不敢相信。",
+      "你用最古老的方式写代码：用痛苦。",
+      "这个仓库早于 vibe 时代。文物级别了。",
     ],
   },
   ja: {
@@ -94,18 +140,36 @@ const roasts: Record<Lang, Record<RoastLevel, string[]>> = {
       "GitHub CopilotがあなたにDMしてきます。",
       "このコミット履歴はAIによる遺言書です。",
       "正直、あなたはまだループの中にいますか？🤖",
+      "AIは覚醒しました。あなたはAPIの請求書を払うだけ。",
+      "47秒で500行。大胆な戦略。結果も出た。",
+      "このコードベースは99%がvibeで、1%がコンパイルへの祈りです。",
+      "AIはまだデプロイされていない機能を生成し続けているとか。",
+      "あなたは「開発者」を超越した。今は「プロンプトアーキテクト」。",
+      "テストもAIが書いた。皮肉は理解しています。",
     ],
     heavy: [
       "AIが重労働、あなたがプロンプト──最適な分業です。",
       "ヘビーなvibe coding、異論は認めません。",
       "diffは嘘をつかない。タイピング速度もね。",
       "コードを書いたのではなく、指揮しました。",
+      "深夜2時のコミットメッセージが流暢すぎる。怪しい。",
+      "AIペアプログラマー検出。どちらが運転してますか？",
+      "800行/分でこのコード品質。すごい。",
+      "これはvibe codingではなく、vibeアーキテクチャです。",
+      "Co-Authored-Byタグが見えます。敬礼します。",
+      "AI支援開発者の中で最良のタイプですね。",
     ],
     mixed: [
       "半分人間、半分AI──ギリギリ合格点。",
       "2025年の標準的な開発者スタイルですね。",
       "AIを使いつつも、手で書いているふりをする精神、好きです。",
       "コミットのタイムスタンプを見ると、少し考えた形跡がある。怪しい。",
+      "バランスのとれたタイムラインに生きている。ほとんどの人はそうじゃない。",
+      "退屈な部分はAIに、楽しい部分は自分で苦しむ。尊重。",
+      "4月のfix-fixチェーンは非常に人間らしかった。",
+      "プロンプトを打つ時も、自分で打つ時も。柔軟です。",
+      "「自分が書いた」と「監督した」の間のどこか。",
+      "これが健全なAI協働のあり方でしょう。たぶん。",
     ],
     human: [
       "現実世界との接触を検出。大丈夫ですか？💀",
@@ -113,14 +177,24 @@ const roasts: Record<Lang, Record<RoastLevel, string[]>> = {
       "絶滅危惧種：手書きリポジトリ。",
       "ChatGPTをご存知ですか？ただ聞いてみただけです。",
       "丁寧すぎるコード。尊重はするけど……なぜ？",
+      "指が疲れたでしょう。横になってください。",
+      "このコードベースの制作過程でAIは傷つけられていません。",
+      "3回確認しました。本当にロボットがいない。信じられない。",
+      "古い方法でコードを書いている：苦しみで。",
+      "このリポジトリはvibe時代以前のもの。文化財レベル。",
     ],
   },
 }
 
-export function getRoast(score: number): string {
+export function getRoast(score: number, index?: number): string {
   const level = getRoastLevel(score)
   const options = roasts[lang][level]
-  return options[Math.floor(Math.random() * options.length)]
+  const i = index !== undefined ? index % options.length : Math.floor(Math.random() * options.length)
+  return options[i]
+}
+
+export function getRoastCount(score: number): number {
+  return roasts[lang][getRoastLevel(score)].length
 }
 
 // ── UI strings ────────────────────────────────────────────────────────────────

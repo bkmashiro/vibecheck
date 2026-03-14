@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import Nav from '../components/Nav'
-import { t, getRoast } from '../lib/i18n'
+import { t, getRoast, getRoastCount } from '../lib/i18n'
 import {
   analyzeRepo,
   enrollRepo,
@@ -116,6 +116,9 @@ function scoreLabel(score: number): { emoji: string; label: string; colorClass: 
 
 function ScoreDisplay({ score }: { score: number }) {
   const { emoji, label, colorClass } = scoreLabel(score)
+  const total = getRoastCount(score)
+  const [idx, setIdx] = useState(() => Math.floor(Math.random() * total))
+
   return (
     <div className="flex flex-col items-center py-8">
       <div className="text-8xl mb-3">{emoji}</div>
@@ -124,7 +127,19 @@ function ScoreDisplay({ score }: { score: number }) {
       </div>
       <div className="text-gray-500 text-lg mt-1">{t.points}</div>
       <div className="text-gray-400 mt-2 text-lg">{label}</div>
-      <div className="text-gray-500 text-sm mt-3 italic max-w-sm text-center">{getRoast(score)}</div>
+      <div className="flex items-center gap-2 mt-3 max-w-sm">
+        <span className="text-gray-500 text-sm italic flex-1 text-center">{getRoast(score, idx)}</span>
+        <button
+          onClick={() => setIdx(i => (i + 1) % total)}
+          className="shrink-0 text-gray-600 hover:text-gray-300 transition-colors p-1 rounded-full hover:bg-gray-800"
+          title="Next"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+            <polyline points="1 4 1 10 7 10" />
+            <path d="M3.51 15a9 9 0 1 0 .49-3.51" />
+          </svg>
+        </button>
+      </div>
     </div>
   )
 }
