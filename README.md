@@ -12,7 +12,9 @@
 [![Vibe Rank](https://img.shields.io/endpoint?url=https://vibecheck-api.dylan-233.workers.dev/badge/rank/bkmashiro/vibecheck)](https://git-vibe.pages.dev/r/bkmashiro/vibecheck)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
-### **[→ git-vibe.pages.dev](https://git-vibe.pages.dev)**
+### **[🚀 Get Started — git-vibe.pages.dev](https://git-vibe.pages.dev)**
+
+> No install. No API key. Just paste a repo URL and go.
 
 </div>
 

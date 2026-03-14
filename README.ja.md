@@ -6,7 +6,9 @@
 
 VibeCheckはgitコミット履歴を分析し、AIアシストコーディングの痕跡を検出します。人間には不可能なタイピング速度、不審なコミットバースト、誰もそんなに速くデバッグできないfix-fix-fixチェーン、そして消し忘れた`Co-Authored-By: Claude`。
 
-**[→ 今すぐ試す git-vibe.pages.dev](https://git-vibe.pages.dev)**
+**[🚀 今すぐ始める — git-vibe.pages.dev](https://git-vibe.pages.dev)**
+
+> インストール不要。APIキー不要。リポジトリURLを貼るだけ。
 
 ---
 

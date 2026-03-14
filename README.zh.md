@@ -6,7 +6,9 @@
 
 VibeCheck 分析你的 git commit 历史，检测 AI 辅助编码的特征——超人的打字速度、可疑的 commit 爆发、连环 fix-fix-fix 链（没有人能调试得这么快），以及那行你忘记删掉的 `Co-Authored-By: Claude`。
 
-**[→ 立即试用 git-vibe.pages.dev](https://git-vibe.pages.dev)**
+**[🚀 立即体验 — git-vibe.pages.dev](https://git-vibe.pages.dev)**
+
+> 无需安装，无需 API Key，粘贴仓库地址即可开始。
 
 ---
 
