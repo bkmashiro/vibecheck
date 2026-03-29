@@ -178,6 +178,26 @@ export function getLoginUrl(): string {
   return `${API_BASE}/auth/login`
 }
 
+export interface HistoryPoint {
+  periodEnd: number   // Unix ms
+  score: number
+  commitCount: number
+}
+
+export async function getRepoHistory(
+  owner: string,
+  repo: string
+): Promise<{ points: HistoryPoint[] }> {
+  const res = await ghFetch(`/api/history/${owner}/${repo}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Unknown error' }))
+    throw new Error(err.error ?? `HTTP ${res.status}`)
+  }
+  const json = await res.json()
+  if (!json.success) throw new Error(json.error ?? 'History failed')
+  return json.data
+}
+
 export async function checkEnrolled(owner: string, repo: string): Promise<{ enrolled: boolean; score?: number; aiProvider?: string | null }> {
   try {
     const res = await fetch(`${API_BASE}/api/enrolled/${owner}/${repo}`)

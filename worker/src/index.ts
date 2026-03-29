@@ -8,7 +8,7 @@ import {
   createSession,
   getSession,
 } from './auth'
-import { fetchCommitsGraphQL, analyzeVibe, type AnalysisResult } from './analyze'
+import { fetchCommitsGraphQL, fetchCommitsPage, analyzeVibe, type AnalysisResult } from './analyze'
 import {
   getCurrentVersion,
   getAllVersions,
@@ -407,6 +407,67 @@ app.get('/badge/user/:username', async (c) => {
     return c.json({ schemaVersion: 1, label: repoName, message: `#${globalRank} globally`, color })
   } catch (e: any) {
     return c.json({ schemaVersion: 1, label: 'top vibe repo', message: e.message ?? 'error', color: 'lightgrey' })
+  }
+})
+
+// ── Score history (multi-page commit analysis) ────────────────────────────────
+// Returns score per batch of 100 commits going backwards in time (max 5 pages = 500 commits)
+app.get('/api/history/:owner/:repo', async (c) => {
+  const { owner, repo } = c.req.param()
+  const cacheKey = `history:${owner}/${repo}`
+
+  // Serve cache if available
+  const cachedRaw = await c.env.KV.get(cacheKey)
+  if (cachedRaw) {
+    try {
+      return c.json({ success: true, data: JSON.parse(cachedRaw), cached: true })
+    } catch {}
+  }
+
+  const sessionOrResp = await requireSession(c)
+  if (sessionOrResp instanceof Response) return sessionOrResp
+  const { token } = sessionOrResp
+
+  try {
+    const MAX_PAGES = 5
+    const points: { periodEnd: number; score: number; commitCount: number }[] = []
+    let cursor: string | null = null
+    let lastRateLimit = { remaining: 9999, resetsAt: 0 }
+
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const result = await fetchCommitsPage(owner, repo, token, cursor)
+      lastRateLimit = result.rateLimit
+
+      if (result.commits.length === 0) break
+
+      const analysis = analyzeVibe(result.commits)
+      const periodEnd = Math.max(...result.commits.map(c => c.timestamp))
+      points.push({ periodEnd, score: analysis.score, commitCount: result.commits.length })
+
+      if (!result.hasNextPage) break
+      cursor = result.endCursor
+    }
+
+    // Sort chronologically (oldest first)
+    points.sort((a, b) => a.periodEnd - b.periodEnd)
+
+    const data = { points }
+    await c.env.KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 86400 })
+
+    return c.json({ success: true, data, cached: false, rateLimit: lastRateLimit })
+  } catch (err: any) {
+    if (err.message === 'rate_limit' && err.rateLimit) {
+      const rl = err.rateLimit
+      const resetInMinutes = Math.ceil(Math.max(0, rl.resetsAt - Math.floor(Date.now() / 1000)) / 60)
+      return c.json({
+        error: 'rate_limit',
+        remaining: rl.remaining,
+        resetsAt: rl.resetsAt,
+        message: `Rate limit hit. Resets in ~${resetInMinutes} min.`,
+      }, 429)
+    }
+    const status = err.message?.includes('not found') ? 404 : 500
+    return c.json({ success: false, error: err.message }, status)
   }
 })
 

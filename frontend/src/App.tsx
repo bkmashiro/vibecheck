@@ -4,6 +4,9 @@ import Home from './pages/Home'
 import Result from './pages/Result'
 import Leaderboard from './pages/Leaderboard'
 import Stats from './pages/Stats'
+import Badge from './pages/Badge'
+import Compare from './pages/Compare'
+import History from './pages/History'
 
 function OAuthCallback() {
   const navigate = useNavigate()
@@ -40,6 +43,9 @@ export default function App() {
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/stats" element={<Stats />} />
         <Route path="/callback" element={<OAuthCallback />} />
+        <Route path="/badge" element={<Badge />} />
+        <Route path="/compare" element={<Compare />} />
+        <Route path="/history" element={<History />} />
       </Routes>
     </BrowserRouter>
   )

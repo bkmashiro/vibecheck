@@ -104,6 +104,64 @@ export interface FetchResult {
   rateLimit: RateLimitInfo
 }
 
+// Fetch a single page of commits (up to 100), returns commits + pageInfo
+export async function fetchCommitsPage(
+  owner: string,
+  repo: string,
+  token: string,
+  cursor: string | null
+): Promise<{ commits: CommitData[]; rateLimit: RateLimitInfo; endCursor: string | null; hasNextPage: boolean }> {
+  const res = await fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: {
+      Authorization: `bearer ${token}`,
+      'Content-Type': 'application/json',
+      'User-Agent': 'vibecheck/1.0',
+    },
+    body: JSON.stringify({
+      query: COMMITS_QUERY,
+      variables: { owner, repo, cursor: cursor ?? null },
+    }),
+  })
+
+  const remaining = parseInt(res.headers.get('X-RateLimit-Remaining') ?? '9999', 10)
+  const resetsAt = parseInt(res.headers.get('X-RateLimit-Reset') ?? '0', 10)
+  const rateLimit: RateLimitInfo = { remaining, resetsAt }
+
+  if (!res.ok) {
+    throw new Error(`GitHub GraphQL error ${res.status}: ${await res.text()}`)
+  }
+  if (remaining < 10) {
+    const err: any = new Error('rate_limit')
+    err.rateLimit = rateLimit
+    throw err
+  }
+
+  const gql: GQLResponse = await res.json()
+  if (gql.errors?.length) {
+    throw new Error(`GraphQL error: ${gql.errors.map((e) => e.message).join(', ')}`)
+  }
+
+  const history = gql.data?.repository?.defaultBranchRef?.target?.history
+  if (!history) throw new Error('Repository not found or has no commits on default branch')
+
+  const commits: CommitData[] = history.nodes.map((node) => ({
+    sha: node.oid,
+    timestamp: new Date(node.committedDate).getTime(),
+    message: node.message,
+    insertions: node.additions,
+    deletions: node.deletions,
+    author: node.author.name || node.author.email || 'unknown',
+  }))
+
+  return {
+    commits,
+    rateLimit,
+    endCursor: history.pageInfo.endCursor ?? null,
+    hasNextPage: history.pageInfo.hasNextPage,
+  }
+}
+
 export async function fetchCommitsGraphQL(
   owner: string,
   repo: string,
