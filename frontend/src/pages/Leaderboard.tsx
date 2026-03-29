@@ -203,7 +203,7 @@ export default function Leaderboard() {
           </div>
         )}
         {!hasMore && entries.length > 0 && (
-          <p className="text-gray-700 text-xs text-center mt-4">{entries.length} / {total} {t.commits ? '' : 'entries'}</p>
+          <p className="text-gray-700 text-xs text-center mt-4">{entries.length} / {total} entries</p>
         )}
 
         <div className="mt-8 text-center">

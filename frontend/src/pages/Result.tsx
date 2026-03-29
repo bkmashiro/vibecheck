@@ -198,6 +198,26 @@ function BreakdownBar({ result }: { result: AnalysisResult }) {
   )
 }
 
+// Parse bucket.hour: new format = Unix ms string; legacy = "YYYY-MM-DD HH:00"
+function parseBucketHour(hour: string): Date | null {
+  const ts = Number(hour)
+  return !isNaN(ts) && ts > 1e10 ? new Date(ts) : null
+}
+
+function bucketDateLabel(hour: string): string {
+  const d = parseBucketHour(hour)
+  return d
+    ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    : hour.split(' ')[0] ?? ''
+}
+
+function bucketFullLabel(hour: string): string {
+  const d = parseBucketHour(hour)
+  return d
+    ? d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+    : hour
+}
+
 function TimelineChart({ timeline }: { timeline: AnalysisResult['timeline'] }) {
   if (timeline.length === 0) return null
   const maxCommits = Math.max(...timeline.map((t) => t.commits), 1)
@@ -210,15 +230,6 @@ function TimelineChart({ timeline }: { timeline: AnalysisResult['timeline'] }) {
         {shown.map((bucket) => {
           const height = Math.max(3, (bucket.commits / maxCommits) * 64)
           const hasSignal = bucket.score > 0
-          // Parse: new format = Unix ms string; legacy = "YYYY-MM-DD HH:00"
-          const ts = Number(bucket.hour)
-          const d = !isNaN(ts) && ts > 1e10 ? new Date(ts) : null
-          const localFull = d
-            ? d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
-            : bucket.hour
-          const localDate = d
-            ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-            : bucket.hour.split(' ')[0] ?? ''
           return (
             <div
               key={bucket.hour}
@@ -229,7 +240,7 @@ function TimelineChart({ timeline }: { timeline: AnalysisResult['timeline'] }) {
                 style={{ height: `${height}px` }}
               />
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10 whitespace-nowrap bg-gray-800 text-xs text-gray-200 px-2 py-1 rounded shadow-lg pointer-events-none">
-                {localFull}<br />
+                {bucketFullLabel(bucket.hour)}<br />
                 {bucket.commits} commit{bucket.commits !== 1 ? 's' : ''}
                 {hasSignal && <><br />⚠️ {formatScore(bucket.score)} pts</>}
               </div>
@@ -238,8 +249,8 @@ function TimelineChart({ timeline }: { timeline: AnalysisResult['timeline'] }) {
         })}
       </div>
       <div className="flex justify-between text-xs text-gray-600 mt-1">
-        <span>{(() => { const ts = Number(shown[0]?.hour); const d = !isNaN(ts) && ts > 1e10 ? new Date(ts) : null; return d ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : shown[0]?.hour.split(' ')[0] ?? '' })()}</span>
-        <span>{(() => { const ts = Number(shown[shown.length-1]?.hour); const d = !isNaN(ts) && ts > 1e10 ? new Date(ts) : null; return d ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : shown[shown.length-1]?.hour.split(' ')[0] ?? '' })()}</span>
+        <span>{bucketDateLabel(shown[0]?.hour ?? '')}</span>
+        <span>{bucketDateLabel(shown[shown.length - 1]?.hour ?? '')}</span>
       </div>
       <div className="flex gap-4 mt-2 text-xs text-gray-600">
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-emerald-800 rounded-sm inline-block" /> Normal</span>
@@ -263,17 +274,20 @@ function SignalList({ signals }: { signals: VibeSignal[] }) {
       {shown.map((sig, i) => {
         const meta = SIGNAL_META[sig.type]
         return (
-          <div key={i} className="flex items-start gap-3 bg-gray-800/50 rounded-lg p-3">
-            <span className={`text-sm font-semibold shrink-0 min-w-[130px] ${meta.color}`}>
-              {meta.label}
-            </span>
-            <span className="text-sm text-gray-400 flex-1 min-w-0 break-words">{sig.description}</span>
-            {sig.commitSha && (
-              <span className="text-xs text-gray-600 font-mono shrink-0">{sig.commitSha.slice(0, 7)}</span>
-            )}
-            <span className="text-xs font-bold text-amber-400 shrink-0">
-              +{formatScore(sig.score)}
-            </span>
+          <div key={i} className="flex flex-col sm:flex-row sm:items-start gap-1.5 sm:gap-3 bg-gray-800/50 rounded-lg p-3">
+            <div className="flex items-center justify-between sm:block sm:min-w-[130px] sm:shrink-0">
+              <span className={`text-sm font-semibold ${meta.color}`}>{meta.label}</span>
+              <span className="text-xs font-bold text-amber-400 sm:hidden">+{formatScore(sig.score)}</span>
+            </div>
+            <div className="flex items-start gap-2 flex-1 min-w-0">
+              <span className="text-sm text-gray-400 flex-1 min-w-0 break-words">{sig.description}</span>
+              {sig.commitSha && (
+                <span className="text-xs text-gray-600 font-mono shrink-0">{sig.commitSha.slice(0, 7)}</span>
+              )}
+              <span className="text-xs font-bold text-amber-400 shrink-0 hidden sm:inline">
+                +{formatScore(sig.score)}
+              </span>
+            </div>
           </div>
         )
       })}
@@ -537,15 +551,19 @@ function EnrollModal({ owner, repo, score, onClose, onEnroll }: {
   const [provider, setProvider] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [errMsg, setErrMsg] = useState('')
 
   async function submit() {
     setLoading(true)
+    setErrMsg('')
     try {
       await enrollRepo(owner, repo, provider || undefined)
       markEnrolled(`${owner}/${repo}`)
       setDone(true)
       setTimeout(onEnroll, 1200)
-    } catch {}
+    } catch (err: any) {
+      setErrMsg(err.message ?? 'Failed to submit')
+    }
     setLoading(false)
   }
 
@@ -594,6 +612,7 @@ function EnrollModal({ owner, repo, score, onClose, onEnroll }: {
             >
               {loading ? '…' : `🚀 ${t.submitLeaderboard}`}
             </button>
+            {errMsg && <p className="text-red-400 text-xs mt-2">{errMsg}</p>}
             <button onClick={onClose} className="mt-3 text-gray-600 hover:text-gray-400 text-xs transition-colors">
               {t.enrollModalSkip}
             </button>
@@ -678,12 +697,15 @@ export default function Result() {
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <div className="text-4xl animate-spin">🔍</div>
-        <p className="text-gray-400">
-          {t.analyzing} <span className="text-emerald-400">{owner}/{repo}</span>…
-        </p>
-        <p className="text-gray-600 text-sm">{t.fetchingCommits}</p>
+      <div className="min-h-screen flex flex-col">
+        <Nav />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <div className="text-4xl animate-spin">🔍</div>
+          <p className="text-gray-400">
+            {t.analyzing} <span className="text-emerald-400">{owner}/{repo}</span>…
+          </p>
+          <p className="text-gray-600 text-sm">{t.fetchingCommits}</p>
+        </div>
       </div>
     )
   }
@@ -691,41 +713,45 @@ export default function Result() {
   // ── Auth required ──────────────────────────────────────────────────────────
   if (authRequired) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
-        <div className="text-6xl mb-2">🔐</div>
-        <h2 className="text-2xl font-bold text-gray-100">{t.loginRequired}</h2>
-        <p className="text-gray-400 text-center max-w-sm">
-          {t.loginRequiredDesc}
-        </p>
-        <a href={getLoginUrl()} className="btn-primary mt-2">🐙 Login with GitHub</a>
-        <Link to="/" className="text-gray-600 hover:text-gray-400 text-sm transition-colors">
-          {t.back}
-        </Link>
+      <div className="min-h-screen flex flex-col">
+        <Nav />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 px-4">
+          <div className="text-6xl mb-2">🔐</div>
+          <h2 className="text-2xl font-bold text-gray-100">{t.loginRequired}</h2>
+          <p className="text-gray-400 text-center max-w-sm">
+            {t.loginRequiredDesc}
+          </p>
+          <a href={getLoginUrl()} className="btn-primary mt-2">🐙 Login with GitHub</a>
+          <Link to="/" className="text-gray-600 hover:text-gray-400 text-sm transition-colors">
+            {t.back}
+          </Link>
+        </div>
       </div>
     )
   }
 
   // ── Rate limit ─────────────────────────────────────────────────────────────
-  if (rateLimitError) return <RateLimitBanner error={rateLimitError} />
+  if (rateLimitError) return <RateLimitBanner error={rateLimitError!} />
 
   // ── Generic error ──────────────────────────────────────────────────────────
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
-        <div className="text-4xl">😬</div>
-        <p className="text-red-400 font-semibold">{t.analysisFailed}</p>
-        <p className="text-gray-500 text-sm text-center max-w-md">{error}</p>
-        <div className="flex gap-3 mt-2">
-          <button onClick={() => load(false)} className="btn-primary text-sm">Retry</button>
-          <Link to="/" className="btn-secondary text-sm">← Back</Link>
+      <div className="min-h-screen flex flex-col">
+        <Nav />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 px-4">
+          <div className="text-4xl">😬</div>
+          <p className="text-red-400 font-semibold">{t.analysisFailed}</p>
+          <p className="text-gray-500 text-sm text-center max-w-md">{error}</p>
+          <div className="flex gap-3 mt-2">
+            <button onClick={() => load(false)} className="btn-primary text-sm">Retry</button>
+            <Link to="/" className="btn-secondary text-sm">← Back</Link>
+          </div>
         </div>
       </div>
     )
   }
 
   if (!result) return null
-
-  const { emoji } = scoreLabel(result.score)
 
   return (
     <div className="min-h-screen flex flex-col">
