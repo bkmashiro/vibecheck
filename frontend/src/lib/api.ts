@@ -48,6 +48,16 @@ export interface AnalysisResult {
   }
 }
 
+export interface RoastResult {
+  headline: string
+  roast: string
+  punchlines: string[]
+  source: 'ai' | 'template'
+  reason: 'daily_cap' | 'provider_error' | null
+  model: string | null
+  generatedAt: number
+}
+
 export interface RateLimitInfo {
   remaining: number
   resetsAt: number
@@ -140,6 +150,21 @@ export async function analyzeRepo(
   const json = await res.json()
   if (!json.success) throw new Error(json.error ?? 'Analysis failed')
   return { data: json.data, cached: json.cached, rateLimit: json.rateLimit }
+}
+
+export async function getRepoRoast(
+  owner: string,
+  repo: string,
+  lang: 'en' | 'zh' | 'ja',
+): Promise<{ data: RoastResult; cached: boolean }> {
+  const res = await ghFetch(`/api/roast/${owner}/${repo}?lang=${lang}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Unknown error' }))
+    throw new Error(err.error ?? `HTTP ${res.status}`)
+  }
+  const json = await res.json()
+  if (!json.success) throw new Error(json.error ?? 'Roast failed')
+  return { data: json.data, cached: json.cached }
 }
 
 export async function enrollRepo(owner: string, repo: string, ai_provider?: string): Promise<{ version: string; label: string }> {

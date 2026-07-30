@@ -12,5 +12,8 @@ binding = "DB"
 database_name = "vibecheck"
 database_id = "ad861c37-485d-4df8-ad15-04a2530d7fa0"
 
+[ai]
+binding = "AI"
+
 [vars]
 FRONTEND_URL = "https://git-vibe.pages.dev"

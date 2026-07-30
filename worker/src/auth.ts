@@ -42,7 +42,7 @@ export async function exchangeCodeForToken(
   return data
 }
 
-export async function getGitHubUser(token: string): Promise<{ login: string; avatar_url: string; name: string }> {
+export async function getGitHubUser(token: string): Promise<{ id: number; login: string; avatar_url: string; name: string }> {
   const res = await fetch('https://api.github.com/user', {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -67,7 +67,7 @@ export function generateSessionId(): string {
 export async function createSession(
   kv: KVNamespace,
   token: string,
-  user: { login: string; avatar_url: string; name: string }
+  user: { id: number; login: string; avatar_url: string; name: string }
 ): Promise<string> {
   const sessionId = generateSessionId()
   await kv.put(
@@ -81,7 +81,7 @@ export async function createSession(
 export async function getSession(
   kv: KVNamespace,
   sessionId: string
-): Promise<{ token: string; user: { login: string; avatar_url: string; name: string } } | null> {
+): Promise<{ token: string; user: { id?: number; login: string; avatar_url: string; name: string } } | null> {
   const data = await kv.get(`session:${sessionId}`)
   if (!data) return null
   try {

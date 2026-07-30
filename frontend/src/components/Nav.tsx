@@ -24,9 +24,9 @@ export default function Nav() {
   return (
     <header className="border-b border-gray-800 px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 bg-gray-950/95 backdrop-blur z-10">
       {/* Logo */}
-      <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0">
+      <Link to="/" className="flex shrink-0 items-center gap-0 transition-opacity hover:opacity-80 sm:gap-2">
         <span className="text-xl">🔍</span>
-        <span className="text-lg font-bold text-emerald-400">VibeCheck</span>
+        <span className="hidden text-lg font-bold text-emerald-400 sm:inline">VibeCheck</span>
       </Link>
 
       {/* Right side */}
@@ -50,7 +50,7 @@ export default function Nav() {
           href="https://github.com/bkmashiro/vibecheck"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-gray-600 hover:text-gray-300 transition-colors text-sm"
+          className="hidden text-gray-600 hover:text-gray-300 transition-colors text-sm sm:block"
           title="Source on GitHub"
         >
           <svg height="18" width="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
@@ -70,8 +70,10 @@ export default function Nav() {
           className={`text-sm px-2 py-1 rounded transition-colors ${
             isActive('/stats') ? 'text-emerald-400 bg-gray-800' : 'text-gray-400 hover:text-gray-200'
           }`}
+          aria-label={t.stats}
         >
-          {t.stats}
+          <span className="sm:hidden">📊</span>
+          <span className="hidden sm:inline">{t.stats}</span>
         </Link>
 
         <Link
@@ -79,8 +81,10 @@ export default function Nav() {
           className={`text-sm px-2 py-1 rounded transition-colors ${
             isActive('/leaderboard') ? 'text-emerald-400 bg-gray-800' : 'text-gray-400 hover:text-gray-200'
           }`}
+          aria-label={t.leaderboard}
         >
-          {t.leaderboard}
+          <span className="sm:hidden">🏆</span>
+          <span className="hidden sm:inline">{t.leaderboard}</span>
         </Link>
 
         {user ? (
@@ -101,14 +105,15 @@ export default function Nav() {
             </a>
             <button
               onClick={handleLogout}
-              className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+              className="hidden text-xs text-gray-600 hover:text-gray-400 transition-colors sm:block"
             >
               {t.logout}
             </button>
           </div>
         ) : (
-          <a href={getLoginUrl()} className="btn-secondary text-xs py-1 px-2.5 ml-1">
-            {t.loginBtn}
+          <a href={getLoginUrl()} className="btn-secondary ml-0.5 px-2 py-1 text-xs sm:ml-1 sm:px-2.5" aria-label={t.loginBtn}>
+            <span className="sm:hidden">🐙</span>
+            <span className="hidden sm:inline">{t.loginBtn}</span>
           </a>
         )}
       </div>

@@ -10,6 +10,17 @@ import {
 } from './auth'
 import { fetchCommitsGraphQL, fetchCommitsPage, analyzeVibe, type AnalysisResult } from './analyze'
 import {
+  ROAST_MODEL,
+  ROAST_PROMPT_VERSION,
+  buildRoastPrompt,
+  generateRoastWithFallback,
+  reserveDailyBudget,
+  roastAnalysisHash,
+  utcUsageDate,
+  type RoastLocale,
+  type RoastResult,
+} from './roast'
+import {
   getCurrentVersion,
   getAllVersions,
   getLeaderboard,
@@ -20,6 +31,7 @@ import {
 type Env = {
   KV: KVNamespace
   DB: D1Database
+  AI: { run(model: string, input: unknown): Promise<unknown> }
   FRONTEND_URL: string
   GH_OAUTH_CLIENT_SECRET: string
 }
@@ -43,7 +55,13 @@ app.use('*', async (c, next) => {
 
 type SessionData = {
   token: string
-  user: { login: string; avatar_url: string; name: string }
+  user: { id?: number; login: string; avatar_url: string; name: string }
+}
+
+async function getStableUserId(session: SessionData): Promise<number> {
+  if (typeof session.user.id === 'number') return session.user.id
+  // Sessions minted before the ID migration live for at most 24h; resolve them once via GitHub.
+  return (await getGitHubUser(session.token)).id
 }
 
 async function resolveSession(c: any): Promise<SessionData | null> {
@@ -167,10 +185,12 @@ app.get('/api/analyze/:owner/:repo', async (c) => {
   const sessionOrResp = await requireSession(c)
   if (sessionOrResp instanceof Response) return sessionOrResp
   const { token, user } = sessionOrResp
-  const privateCacheKey = `analysis:v2:user:${user.login}:${owner}/${repo}`
+  const userId = await getStableUserId(sessionOrResp)
+  const privateCacheKey = `analysis:v2:user-id:${userId}:${owner}/${repo}`
+  const legacyPrivateCacheKey = `analysis:v2:user:${user.login}:${owner}/${repo}`
 
   if (!force) {
-    const cachedRaw = await c.env.KV.get(privateCacheKey)
+    const cachedRaw = await c.env.KV.get(privateCacheKey) ?? await c.env.KV.get(legacyPrivateCacheKey)
     if (cachedRaw) {
       try {
         const cached = JSON.parse(cachedRaw) as AnalysisResult
@@ -213,6 +233,51 @@ app.get('/api/analyze/:owner/:repo', async (c) => {
   }
 })
 
+// ── AI roast route ────────────────────────────────────────────────────────────
+
+app.get('/api/roast/:owner/:repo', async (c) => {
+  const owner = c.req.param('owner')
+  const repo = c.req.param('repo')
+  const requestedLang = c.req.query('lang')
+  const locale: RoastLocale = requestedLang === 'zh' || requestedLang === 'ja' ? requestedLang : 'en'
+
+  let scope = 'public'
+  let analysisRaw = await c.env.KV.get(`analysis:v2:public:${owner}/${repo}`)
+  if (!analysisRaw) {
+    const session = await resolveSession(c)
+    if (!session) return c.json({ error: 'No cached analysis found.' }, 404)
+    const userId = await getStableUserId(session)
+    scope = `user-id:${userId}`
+    analysisRaw = await c.env.KV.get(`analysis:v2:user-id:${userId}:${owner}/${repo}`)
+      ?? await c.env.KV.get(`analysis:v2:user:${session.user.login}:${owner}/${repo}`)
+  }
+  if (!analysisRaw) return c.json({ error: 'No cached analysis found.' }, 404)
+
+  let analysis: AnalysisResult
+  try { analysis = JSON.parse(analysisRaw) as AnalysisResult }
+  catch { return c.json({ error: 'Corrupted analysis cache.' }, 500) }
+
+  const analysisHash = await roastAnalysisHash(analysis)
+  const roastKey = `${ROAST_PROMPT_VERSION}:${scope}:${owner}/${repo}:${analysisHash}:${locale}`
+  const cachedRaw = await c.env.KV.get(roastKey)
+  if (cachedRaw) {
+    try { return c.json({ success: true, data: JSON.parse(cachedRaw) as RoastResult, cached: true }) }
+    catch {}
+  }
+
+  const input = { owner, repo, locale, analysis }
+  const data = await generateRoastWithFallback(input, {
+    reserveBudget: (millineurons) => reserveDailyBudget(c.env.DB, utcUsageDate(), millineurons),
+    runAi: (roastInput) => c.env.AI.run(ROAST_MODEL, buildRoastPrompt(roastInput)),
+  })
+
+  // Only provider-backed copy is durable. Template fallback is re-evaluated after the UTC reset.
+  if (data.source === 'ai') {
+    await c.env.KV.put(roastKey, JSON.stringify(data), { expirationTtl: 2_592_000 })
+  }
+  return c.json({ success: true, data, cached: false })
+})
+
 // ── Leaderboard enrollment (opt-in) ───────────────────────────────────────────
 
 app.post('/api/enroll', async (c) => {
@@ -243,7 +308,11 @@ app.post('/api/enroll', async (c) => {
     return c.json({ error: 'Could not verify repository permissions.' }, 403)
   }
   const repository = await permissionResponse.json() as {
+    private?: boolean
     permissions?: { push?: boolean; maintain?: boolean; admin?: boolean }
+  }
+  if (repository.private) {
+    return c.json({ error: 'Private repositories cannot join the public leaderboard.' }, 403)
   }
   if (!repository.permissions?.push && !repository.permissions?.maintain && !repository.permissions?.admin) {
     return c.json({ error: 'Write access to the repository is required to join the leaderboard.' }, 403)
@@ -251,8 +320,7 @@ app.post('/api/enroll', async (c) => {
 
   // Must have a cached analysis
   const publicCacheKey = `analysis:v2:public:${owner}/${repo}`
-  const privateCacheKey = `analysis:v2:user:${sessionOrResp.user.login}:${owner}/${repo}`
-  const cachedRaw = await c.env.KV.get(publicCacheKey) ?? await c.env.KV.get(privateCacheKey)
+  const cachedRaw = await c.env.KV.get(publicCacheKey)
   if (!cachedRaw) {
     return c.json({ error: 'No cached analysis found. Please analyze the repo first.' }, 404)
   }

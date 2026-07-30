@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import Nav from '../components/Nav'
-import { t, getRoast, getRoastCount } from '../lib/i18n'
+import { t, lang, getRoast } from '../lib/i18n'
 import {
   analyzeRepo,
+  getRepoRoast,
   enrollRepo,
   checkEnrolled,
   AuthRequiredError,
@@ -11,6 +12,7 @@ import {
   getLoginUrl,
   API_URL,
   type AnalysisResult,
+  type RoastResult,
   type VibeSignal,
 } from '../lib/api'
 
@@ -125,14 +127,35 @@ function scoreLabel(score: number): { emoji: string; label: string; colorClass: 
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function ScoreDisplay({ result }: { result: AnalysisResult }) {
+function ScoreDisplay({ result, owner, repo }: { result: AnalysisResult; owner: string; repo: string }) {
   const { score, confidence, sample } = result
   const { emoji, label, colorClass } = scoreLabel(score)
-  const total = getRoastCount(score)
-  const [idx, setIdx] = useState(() => Math.floor(Math.random() * total))
+  const [roastResult, setRoastResult] = useState<RoastResult | null>(null)
+  const [roastLoading, setRoastLoading] = useState(true)
+  const [roastFailed, setRoastFailed] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    setRoastLoading(true)
+    setRoastFailed(false)
+    getRepoRoast(owner, repo, lang)
+      .then(({ data }) => { if (active) setRoastResult(data) })
+      .catch(() => { if (active) setRoastFailed(true) })
+      .finally(() => { if (active) setRoastLoading(false) })
+    return () => { active = false }
+  }, [owner, repo, result.latestSha])
+
+  const fallbackCopy = getRoast(score, 0)
+  const sourceLabel = roastResult?.source === 'ai'
+    ? 'AI roast'
+    : roastResult?.reason === 'daily_cap'
+      ? 'Template · daily cap'
+      : roastResult?.source === 'template'
+        ? 'Template · provider fallback'
+        : roastFailed ? 'Local fallback' : null
 
   return (
-    <div className="flex flex-col items-center py-8">
+    <div className="flex w-full min-w-0 flex-col items-center py-8">
       <div className="text-8xl mb-3">{emoji}</div>
       <div className={`text-6xl font-bold tabular-nums ${colorClass}`}>
         {formatScore(score)}
@@ -152,22 +175,29 @@ function ScoreDisplay({ result }: { result: AnalysisResult }) {
           </span>
         )}
       </div>
-      <div className="relative mt-3 w-72">
-        {/* fixed-width so button never shifts */}
-        <p className="text-gray-500 text-sm italic text-center px-8 min-h-[2.5rem] flex items-center justify-center">
-          {getRoast(score, idx)}
-        </p>
-        <button
-          onClick={() => setIdx(i => (i + 1) % total)}
-          className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-300 transition-colors p-1.5 rounded-full hover:bg-gray-800"
-          title="Next quote"
-          aria-label="Next quote"
-        >
-          {/* Heroicons: arrow-path */}
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="w-4 h-4">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-          </svg>
-        </button>
+      <div className="mt-5 w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-gray-800 bg-gray-950/70 px-5 py-4 text-center sm:max-w-xl">
+        {roastLoading ? (
+          <p className="text-sm text-gray-600 animate-pulse">Sharpening the review…</p>
+        ) : (
+          <>
+            <div className="mb-2 flex flex-wrap items-center justify-center gap-2">
+              <span className="break-words text-sm font-semibold text-gray-300">
+                {roastResult?.headline ?? (lang === 'zh' ? '本地毒舌库存' : lang === 'ja' ? 'ローカル毒舌在庫' : 'Local roast reserve')}
+              </span>
+              {sourceLabel && (
+                <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${roastResult?.source === 'ai' ? 'border-violet-700/60 text-violet-400' : 'border-gray-700 text-gray-500'}`}>
+                  {sourceLabel}
+                </span>
+              )}
+            </div>
+            <p className="break-words text-sm leading-relaxed text-gray-400">
+              {roastResult?.roast ?? fallbackCopy}
+            </p>
+            {roastResult?.punchlines[0] && (
+              <p className="mt-2 break-words text-xs italic text-gray-600">“{roastResult.punchlines[0]}”</p>
+            )}
+          </>
+        )}
       </div>
     </div>
   )
@@ -840,7 +870,7 @@ export default function Result() {
 
         {/* Score */}
         <div className="card">
-          <ScoreDisplay result={result} />
+          <ScoreDisplay result={result} owner={owner!} repo={repo!} />
         </div>
 
         {/* CTA for visitors not logged in */}
