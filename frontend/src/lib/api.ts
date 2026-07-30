@@ -4,24 +4,36 @@ export const API_URL = API_BASE
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export interface VibeSignal {
-  type: 'burst_speed' | 'window_speed' | 'fix_fix' | 'coauthored' | 'rapid_commits' | 'ci_failure' | 'line_volume'
+  type:
+    | 'explicit_ai'
+    | 'burst_speed'
+    | 'session_density'
+    | 'repair_chain'
+    // legacy (v1) compatibility for historical leaderboard rows
+    | 'window_speed'
+    | 'fix_fix'
+    | 'coauthored'
+    | 'rapid_commits'
+    | 'ci_failure'
+    | 'line_volume'
   score: number
   description: string
   commitSha?: string
 }
 
 export interface ScoreBreakdown {
-  burstSignals: number
-  lineVolume: number
-  windowSpeed: number
-  fixFix: number
-  coauthored: number
+  explicitAi: number
+  burstSpeed: number
+  sessionDensity: number
+  repairChains: number
   rapidCommits: number
-  ciFailures: number
 }
 
 export interface AnalysisResult {
-  score: number           // unbounded
+  score: number // 0-100
+  confidence: number
+  energy: number
+  algorithmVersion: 'v2'
   signals: VibeSignal[]
   timeline: { hour: string; score: number; commits: number }[]
   commitCount: number
@@ -29,6 +41,11 @@ export interface AnalysisResult {
   analyzedAt: number
   oldestCommitAt: number
   breakdown: ScoreBreakdown
+  sample: {
+    eligibleCommits: number
+    mergeCommitsExcluded: number
+    timespanDays: number
+  }
 }
 
 export interface RateLimitInfo {
@@ -90,7 +107,7 @@ export class RateLimitError extends Error {
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('vibecheck_session')
-  if (token) return { Authorization: `Bearer ${token}` }
+  if (token) return { Authorization: 'Bearer ' + token }
   return {}
 }
 
@@ -160,7 +177,7 @@ export async function getMe(): Promise<{ login: string; avatar_url: string; name
   const token = localStorage.getItem('vibecheck_session')
   if (!token) return null
   const res = await fetch(`${API_BASE}/api/me`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: 'Bearer ' + token },
   })
   if (!res.ok) return null
   const json = await res.json()

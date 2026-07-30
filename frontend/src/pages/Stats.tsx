@@ -27,8 +27,6 @@ const PROVIDER_ICONS: Record<string, string> = {
 }
 
 function formatScore(score: number) {
-  if (score >= 1000000) return `${(score / 1000000).toFixed(1)}M`
-  if (score >= 1000) return `${(score / 1000).toFixed(1)}k`
   return Math.round(score).toString()
 }
 
@@ -61,17 +59,16 @@ function BarChart({ data, maxVal, color }: {
 function Histogram({ scores }: { scores: number[] }) {
   if (!scores.length) return <p className="text-gray-600 text-sm">No data yet.</p>
 
-  // Log-scale buckets — unbounded score, extend to absurdity
   const buckets = [
-    { label: '0–10',   min: 0,       max: 10 },
-    { label: '10–100', min: 10,      max: 100 },
-    { label: '100–500',min: 100,     max: 500 },
-    { label: '500–2k', min: 500,     max: 2000 },
-    { label: '2k–5k',  min: 2000,    max: 5000 },
-    { label: '5k–20k', min: 5000,    max: 20000 },
-    { label: '20k–100k', min: 20000, max: 100000 },
-    { label: '100k–1M', min: 100000, max: 1000000 },
-    { label: '1M+ 🤖', min: 1000000, max: Infinity },
+    { label: '0–10', min: 0, max: 10 },
+    { label: '10–25', min: 10, max: 25 },
+    { label: '25–40', min: 25, max: 40 },
+    { label: '40–55', min: 40, max: 55 },
+    { label: '55–70', min: 55, max: 70 },
+    { label: '70–80', min: 70, max: 80 },
+    { label: '80–90', min: 80, max: 90 },
+    { label: '90–100', min: 90, max: 100 },
+    { label: '100', min: 100, max: Infinity },
   ]
 
   const counts = buckets.map(b => ({

@@ -7,6 +7,9 @@
     "worker"
   ],
   "scripts": {
+    "build": "pnpm --filter vibecheck-frontend build && pnpm --filter vibecheck-worker typecheck",
+    "test": "pnpm --filter vibecheck-worker test",
+    "typecheck": "pnpm -r typecheck",
     "dev:worker": "cd worker && wrangler dev",
     "dev:frontend": "cd frontend && vite",
     "deploy:worker": "cd worker && wrangler deploy",

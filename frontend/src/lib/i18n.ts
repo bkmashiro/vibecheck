@@ -37,9 +37,9 @@ export const lang: Lang = getLang()
 type RoastLevel = 'god' | 'heavy' | 'mixed' | 'human'
 
 function getRoastLevel(score: number): RoastLevel {
-  if (score >= 2000) return 'god'
-  if (score >= 500)  return 'heavy'
-  if (score >= 100)  return 'mixed'
+  if (score >= 80) return 'god'
+  if (score >= 50) return 'heavy'
+  if (score >= 25) return 'mixed'
   return 'human'
 }
 
@@ -331,7 +331,7 @@ export function getRoastCount(score: number): number {
 
 const ui = {
   en: {
-    tagline: "Analyze any GitHub repo's commit history and detect AI-assisted \"vibe coding\" patterns.\nNo score cap — the bigger the vibe, the bigger the number.",
+    tagline: "Analyze recent GitHub commits for auditable AI-assistance signals.\nVibe Index v2 is normalized from 0–100 and reports confidence separately.",
     placeholder: 'owner/repo or GitHub URL',
     analyze: 'Analyze →',
     loginPrompt: 'Login with GitHub to analyze repos',
@@ -371,7 +371,7 @@ const ui = {
     scoreBreakdown: 'Score Breakdown',
     timeline: 'Timeline',
     aboutScore: 'About the Score',
-    aboutScoreText: 'The score is unbounded — it accumulates for every AI signal found. A massive AI-written monorepo will score in the tens of thousands. Signals include typing-speed analysis, co-authorship tags, fix→fix cycles, CI failure chains, and raw line volume.',
+    aboutScoreText: 'Vibe Index v2 is normalized to 0–100, so repository size alone no longer wins. It combines explicit AI attribution with capped, same-author timing signals, excludes merge commits, and reports sample confidence separately. It is an auditable heuristic, not proof of authorship.',
     sigCoAuthor: 'Co-authored-by',
     sigFixFix: 'Fix→Fix cycle',
     sigCiFail: 'CI failure fix',
@@ -423,11 +423,11 @@ const ui = {
     inputError: 'Enter a repo like "owner/repo" or a GitHub URL',
     privateBadge: 'private',
     featBurstTitle: 'Burst Speed',
-    featBurstDesc: 'Commits with 500+ lines/min — impossible for humans',
-    featFixTitle: 'Fix Chains',
-    featFixDesc: 'Fix-after-fix commits within minutes — +50 pts each pair',
-    featCoTitle: 'Co-authorship',
-    featCoDesc: 'Explicit AI co-author attribution — +200 pts per commit',
+    featBurstDesc: 'Same-author commit intervals provide capped timing evidence',
+    featFixTitle: 'Session Patterns',
+    featFixDesc: 'Dense sessions and repair chains add bounded evidence',
+    featCoTitle: 'Explicit Attribution',
+    featCoDesc: 'Known AI identities are strong signals; human co-authors stay neutral',
     // Leaderboard page
     mostVibed: 'Most Vibed Repos',
     loadingLeaderboard: 'Loading leaderboard…',
@@ -447,7 +447,7 @@ const ui = {
     reauthorize: 'Re-authorize with GitHub →',
   },
   zh: {
-    tagline: '分析任意 GitHub 仓库的 commit 历史，检测 AI 辅助的「Vibe Coding」痕迹。分数无上限——越 vibe，分越高。',
+    tagline: '分析 GitHub 最近提交中可复核的 AI 辅助信号。Vibe Index v2 归一化为 0–100，并单独报告样本置信度。',
     placeholder: 'owner/repo 或 GitHub 链接',
     analyze: '分析 →',
     loginPrompt: '登录 GitHub 后才能分析仓库',
@@ -486,7 +486,7 @@ const ui = {
     scoreBreakdown: '分数构成',
     timeline: '时间线',
     aboutScore: '关于分数',
-    aboutScoreText: '分数无上限——每检测到一个 AI 信号就累加。一个完全由 AI 编写的大型 monorepo 可以轻松上万分。信号包括打字速度分析、共同署名标签、fix→fix 链、CI 失败链以及原始行量。',
+    aboutScoreText: 'Vibe Index v2 归一化为 0–100，不再让仓库体量直接决定排名。它组合明确的 AI 署名、同作者时序信号和分类上限，排除 merge commit，并单独显示样本置信度。这是可审计的启发式指标，不是作者身份鉴定。',
     sigCoAuthor: '共同署名',
     sigFixFix: 'Fix→Fix 链',
     sigCiFail: 'CI 失败修复',
@@ -531,11 +531,11 @@ const ui = {
     inputError: '请输入 "owner/repo" 格式或 GitHub 链接',
     privateBadge: '私有',
     featBurstTitle: '爆发速度',
-    featBurstDesc: '单次 commit 500+ 行/分钟——人类做不到',
-    featFixTitle: 'Fix 链',
-    featFixDesc: '几分钟内连续 fix commit——每对 +50 分',
-    featCoTitle: '共同署名',
-    featCoDesc: '明文 AI 共同作者标注——每条 +200 分',
+    featBurstDesc: '只比较同作者 commit 间隔，并限制该类证据上限',
+    featFixTitle: 'Session 模式',
+    featFixDesc: '高密度 session 与修复链提供有上限的证据',
+    featCoTitle: '明确 AI 署名',
+    featCoDesc: '已知 AI 身份是强信号；普通人类共同作者保持中性',
     mostVibed: '最 Vibe 的仓库',
     loadingLeaderboard: '加载排行榜中…',
     noEnrolled: '还没有仓库上榜。',
@@ -554,7 +554,7 @@ const ui = {
     reauthorize: '重新授权 GitHub →',
   },
   ja: {
-    tagline: 'GitHubリポジトリのコミット履歴を分析し、AIアシストの「Vibe Coding」パターンを検出。スコア上限なし──vibeが大きいほど、数字も大きい。',
+    tagline: 'GitHubの最近のコミットから確認可能なAI支援シグナルを分析。Vibe Index v2は0〜100に正規化し、サンプル信頼度を別表示します。',
     placeholder: 'owner/repo または GitHub URL',
     analyze: '分析 →',
     loginPrompt: 'リポジトリを分析するにはGitHubでログインしてください',
@@ -593,7 +593,7 @@ const ui = {
     scoreBreakdown: 'スコア内訳',
     timeline: 'タイムライン',
     aboutScore: 'スコアについて',
-    aboutScoreText: 'スコアは上限なし──AIシグナルが検出されるたびに加算されます。AIで書かれた大規模モノレポは数万点に達することも。タイピング速度分析、共同著者タグ、fix→fixチェーン、CI失敗チェーン、生のコード量すべてが対象です。',
+    aboutScoreText: 'Vibe Index v2は0〜100に正規化され、リポジトリの規模だけで順位が決まりません。明示的なAI帰属と同一作者の時系列シグナルを上限付きで組み合わせ、マージコミットを除外し、サンプル信頼度を別表示します。作者を断定するものではありません。',
     sigCoAuthor: '共同著者タグ',
     sigFixFix: 'Fix→Fixチェーン',
     sigCiFail: 'CI失敗修正',
@@ -638,11 +638,11 @@ const ui = {
     inputError: '"owner/repo" 形式またはGitHub URLを入力してください',
     privateBadge: 'プライベート',
     featBurstTitle: 'バーストスピード',
-    featBurstDesc: '1コミットで500行以上/分——人間には不可能',
-    featFixTitle: 'Fixチェーン',
-    featFixDesc: '数分以内のfix連続コミット——1ペア+50pts',
-    featCoTitle: '共同著者',
-    featCoDesc: 'AIの明示的な共同著者タグ——1コミット+200pts',
+    featBurstDesc: '同一作者のコミット間隔だけを比較し、証拠点を上限付きで加算',
+    featFixTitle: 'セッションパターン',
+    featFixDesc: '高密度セッションと修正チェーンを上限付きで評価',
+    featCoTitle: '明示的なAI帰属',
+    featCoDesc: '既知のAI名は強い証拠。人間の共同著者は中立',
     mostVibed: '最もVibeなリポジトリ',
     loadingLeaderboard: 'ランキングを読み込み中…',
     noEnrolled: 'まだ登録されたリポジトリがありません。',

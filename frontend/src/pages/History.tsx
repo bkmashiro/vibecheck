@@ -234,9 +234,9 @@ export default function HistoryPage() {
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Per-batch breakdown</p>
               {[...state.points].reverse().map((p, i) => {
                 const score = p.score
-                const colorClass = score >= 2000 ? 'text-red-400'
-                  : score >= 500 ? 'text-orange-400'
-                  : score >= 100 ? 'text-yellow-400'
+                const colorClass = score >= 80 ? 'text-red-400'
+                  : score >= 50 ? 'text-orange-400'
+                  : score >= 25 ? 'text-yellow-400'
                   : 'text-emerald-400'
                 return (
                   <div key={i} className="flex items-center justify-between bg-gray-800/40 rounded-lg px-4 py-2.5">

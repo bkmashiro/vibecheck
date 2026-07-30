@@ -4,15 +4,13 @@ import Nav from '../components/Nav'
 import { analyzeRepo, AuthRequiredError, RateLimitError, getLoginUrl, type AnalysisResult } from '../lib/api'
 
 function formatScore(score: number): string {
-  if (score >= 1_000_000) return `${(score / 1_000_000).toFixed(2)}M`
-  if (score >= 1_000) return `${(score / 1_000).toFixed(1)}k`
-  return score.toFixed(1)
+  return score.toFixed(0)
 }
 
 function scoreLabel(score: number): { emoji: string; label: string; colorClass: string } {
-  if (score >= 2000) return { emoji: '🤖', label: 'Pure Vibe', colorClass: 'text-red-400' }
-  if (score >= 500) return { emoji: '🤖', label: 'Heavy AI', colorClass: 'text-orange-400' }
-  if (score >= 100) return { emoji: '🤝', label: 'Mixed', colorClass: 'text-yellow-400' }
+  if (score >= 80) return { emoji: '🤖', label: 'Pure Vibe', colorClass: 'text-red-400' }
+  if (score >= 50) return { emoji: '🤖', label: 'Heavy AI', colorClass: 'text-orange-400' }
+  if (score >= 25) return { emoji: '🤝', label: 'Mixed', colorClass: 'text-yellow-400' }
   return { emoji: '👨‍💻', label: 'Mostly Human', colorClass: 'text-emerald-400' }
 }
 
@@ -93,8 +91,12 @@ function RepoCard({ repo, state, onAnalyze }: {
         const { emoji, label, colorClass } = scoreLabel(data.score)
         const bd = data.breakdown
         const maxVal = Math.max(
-          bd.lineVolume, bd.burstSignals, bd.windowSpeed,
-          bd.fixFix, bd.coauthored, bd.rapidCommits, bd.ciFailures, 1
+          bd.explicitAi,
+          bd.burstSpeed,
+          bd.sessionDensity,
+          bd.repairChains,
+          bd.rapidCommits,
+          1
         )
         return (
           <div className="space-y-5">
@@ -104,18 +106,18 @@ function RepoCard({ repo, state, onAnalyze }: {
                 {formatScore(data.score)}
               </div>
               <div className="text-gray-500 text-sm">{label}</div>
-              <div className="text-gray-600 text-xs mt-1">{data.commitCount} commits</div>
+              <div className="text-gray-600 text-xs mt-1">
+                Confidence {data.confidence}% · {data.sample.eligibleCommits} eligible commits
+              </div>
             </div>
 
             <div className="space-y-2">
               <p className="text-xs text-gray-500 uppercase tracking-wider">Breakdown</p>
-              <ScoreBar label="Line Volume" value={bd.lineVolume} max={maxVal} color="bg-emerald-600" />
-              <ScoreBar label="Burst Speed" value={bd.burstSignals} max={maxVal} color="bg-amber-500" />
-              <ScoreBar label="Window Speed" value={bd.windowSpeed} max={maxVal} color="bg-orange-500" />
-              <ScoreBar label="Fix→Fix" value={bd.fixFix} max={maxVal} color="bg-yellow-500" />
-              <ScoreBar label="AI Co-author" value={bd.coauthored} max={maxVal} color="bg-purple-500" />
+              <ScoreBar label="Explicit AI" value={bd.explicitAi} max={maxVal} color="bg-emerald-600" />
+              <ScoreBar label="Burst Speed" value={bd.burstSpeed} max={maxVal} color="bg-amber-500" />
+              <ScoreBar label="Session Density" value={bd.sessionDensity} max={maxVal} color="bg-orange-500" />
+              <ScoreBar label="Repair Chains" value={bd.repairChains} max={maxVal} color="bg-yellow-500" />
               <ScoreBar label="Rapid Commits" value={bd.rapidCommits} max={maxVal} color="bg-blue-500" />
-              <ScoreBar label="CI Failures" value={bd.ciFailures} max={maxVal} color="bg-red-500" />
             </div>
           </div>
         )

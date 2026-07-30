@@ -5,15 +5,13 @@ import Nav from '../components/Nav'
 import { getLeaderboard, getVersions, type LeaderboardEntry, type ScoringVersion } from '../lib/api'
 
 function formatScore(score: number): string {
-  if (score >= 1_000_000) return `${(score / 1_000_000).toFixed(2)}M`
-  if (score >= 1_000) return `${(score / 1_000).toFixed(1)}k`
-  return score.toFixed(1)
+  return `${Math.round(score)} / 100`
 }
 
 function ScoreBadge({ score }: { score: number }) {
   const color =
-    score >= 2000 ? 'text-red-400' : score >= 500 ? 'text-orange-400' : score >= 100 ? 'text-yellow-400' : 'text-emerald-400'
-  const emoji = score >= 500 ? '🤖' : score >= 100 ? '🤝' : '👨‍💻'
+    score >= 80 ? 'text-red-400' : score >= 50 ? 'text-orange-400' : score >= 25 ? 'text-yellow-400' : 'text-emerald-400'
+  const emoji = score >= 50 ? '🤖' : score >= 25 ? '🤝' : '👨‍💻'
   return (
     <span className={`font-bold tabular-nums ${color}`}>
       {emoji} {formatScore(score)}

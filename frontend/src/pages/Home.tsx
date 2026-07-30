@@ -11,13 +11,12 @@ interface RecentAnalysis {
 }
 
 function formatScore(score: number): string {
-  if (score >= 1000) return `${(score / 1000).toFixed(1)}k`
   return Math.round(score).toString()
 }
 
 function scoreEmoji(score: number) {
-  if (score >= 500) return '🤖'
-  if (score >= 100) return '🤝'
+  if (score >= 80) return '🤖'
+  if (score >= 50) return '🤝'
   return '👨‍💻'
 }
 
@@ -214,7 +213,7 @@ export default function Home() {
                   <span className="text-gray-300 text-sm">{r.repo}</span>
                   <span className="flex items-center gap-1 text-sm font-semibold">
                     <span>{scoreEmoji(r.score)}</span>
-                    <span className={r.score >= 500 ? 'text-red-400' : r.score >= 100 ? 'text-yellow-400' : 'text-emerald-400'}>
+                    <span className={r.score >= 80 ? 'text-red-400' : r.score >= 50 ? 'text-yellow-400' : 'text-emerald-400'}>
                       {formatScore(r.score)} pts
                     </span>
                   </span>

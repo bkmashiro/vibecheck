@@ -96,34 +96,37 @@ function BadgesPanel({ owner, repo, username }: { owner: string; repo: string; u
 
 // ── Signal labels ──────────────────────────────────────────────────────────────
 
-const SIGNAL_META: Record<VibeSignal['type'], { label: string; color: string }> = {
-  burst_speed:   { label: '⚡ Burst Speed',     color: 'text-amber-400' },
-  window_speed:  { label: '📈 Window Speed',    color: 'text-orange-400' },
-  fix_fix:       { label: '🔄 Fix→Fix Pattern', color: 'text-yellow-400' },
-  coauthored:    { label: '🤝 AI Co-author',    color: 'text-purple-400' },
-  rapid_commits: { label: '💨 Rapid Commits',   color: 'text-blue-400' },
-  ci_failure:    { label: '🔴 CI Failure Fix',  color: 'text-red-400' },
-  line_volume:   { label: '📦 Line Volume',     color: 'text-emerald-400' },
+const SIGNAL_META: Record<string, { label: string; color: string }> = {
+  explicit_ai:    { label: '🧠 Explicit AI Attribution', color: 'text-rose-400' },
+  burst_speed:   { label: '⚡ Burst Speed',          color: 'text-amber-400' },
+  session_density: { label: '🧩 Session Density',     color: 'text-orange-400' },
+  repair_chain:  { label: '🔄 Repair Chain',        color: 'text-yellow-400' },
+  rapid_commits: { label: '💨 Rapid Commits',       color: 'text-blue-400' },
+  // legacy fields (v1 history)
+  window_speed:  { label: '📈 Window Speed',        color: 'text-orange-400' },
+  fix_fix:       { label: '🔄 Fix→Fix Pattern',    color: 'text-yellow-400' },
+  coauthored:    { label: '🤝 Co-authored AI',      color: 'text-purple-400' },
+  ci_failure:    { label: '🔴 CI Failure Fix',      color: 'text-red-400' },
+  line_volume:   { label: '📦 Line Volume',        color: 'text-emerald-400' },
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function formatScore(score: number): string {
-  if (score >= 1_000_000) return `${(score / 1_000_000).toFixed(2)}M`
-  if (score >= 1_000) return `${(score / 1_000).toFixed(1)}k`
-  return score.toFixed(1)
+  return score.toFixed(0)
 }
 
 function scoreLabel(score: number): { emoji: string; label: string; colorClass: string } {
-  if (score >= 2000) return { emoji: '🤖', label: t.labelPureVibe,   colorClass: 'text-red-400' }
-  if (score >= 500)  return { emoji: '🤖', label: t.labelHeavyAI,    colorClass: 'text-orange-400' }
-  if (score >= 100)  return { emoji: '🤝', label: t.labelMixed,        colorClass: 'text-yellow-400' }
-  return               { emoji: '👨‍💻', label: t.labelMostlyHuman,          colorClass: 'text-emerald-400' }
+  if (score >= 80) return { emoji: '🤖', label: t.labelPureVibe, colorClass: 'text-red-400' }
+  if (score >= 50) return { emoji: '🤖', label: t.labelHeavyAI, colorClass: 'text-orange-400' }
+  if (score >= 25) return { emoji: '🤝', label: t.labelMixed, colorClass: 'text-yellow-400' }
+  return               { emoji: '👨‍💻', label: t.labelMostlyHuman, colorClass: 'text-emerald-400' }
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function ScoreDisplay({ score }: { score: number }) {
+function ScoreDisplay({ result }: { result: AnalysisResult }) {
+  const { score, confidence, sample } = result
   const { emoji, label, colorClass } = scoreLabel(score)
   const total = getRoastCount(score)
   const [idx, setIdx] = useState(() => Math.floor(Math.random() * total))
@@ -134,8 +137,21 @@ function ScoreDisplay({ score }: { score: number }) {
       <div className={`text-6xl font-bold tabular-nums ${colorClass}`}>
         {formatScore(score)}
       </div>
-      <div className="text-gray-500 text-lg mt-1">{t.points}</div>
+      <div className="text-gray-500 text-sm mt-1">Vibe Index / 100</div>
       <div className="text-gray-400 mt-2 text-lg">{label}</div>
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs">
+        <span className="rounded-full border border-gray-700 bg-gray-900 px-3 py-1 text-gray-300">
+          Confidence {confidence}%
+        </span>
+        <span className="rounded-full border border-gray-800 px-3 py-1 text-gray-500">
+          {sample.eligibleCommits} eligible commits
+        </span>
+        {sample.mergeCommitsExcluded > 0 && (
+          <span className="rounded-full border border-gray-800 px-3 py-1 text-gray-500">
+            {sample.mergeCommitsExcluded} merges excluded
+          </span>
+        )}
+      </div>
       <div className="relative mt-3 w-72">
         {/* fixed-width so button never shifts */}
         <p className="text-gray-500 text-sm italic text-center px-8 min-h-[2.5rem] flex items-center justify-center">
@@ -160,13 +176,11 @@ function ScoreDisplay({ score }: { score: number }) {
 function BreakdownBar({ result }: { result: AnalysisResult }) {
   const { breakdown } = result
   const entries = [
-    { label: t.barLineVol,    value: breakdown.lineVolume,    color: 'bg-emerald-600' },
-    { label: t.barBurst,    value: breakdown.burstSignals,  color: 'bg-amber-500' },
-    { label: t.barWindow,   value: breakdown.windowSpeed,   color: 'bg-orange-500' },
-    { label: t.barFixFix,        value: breakdown.fixFix,        color: 'bg-yellow-500' },
-    { label: t.barCoauthor,    value: breakdown.coauthored,    color: 'bg-purple-500' },
-    { label: t.barRapid,  value: breakdown.rapidCommits,  color: 'bg-blue-500' },
-    { label: t.barCI,    value: breakdown.ciFailures,    color: 'bg-red-500' },
+    { label: 'Explicit AI', value: breakdown.explicitAi, color: 'bg-emerald-600' },
+    { label: 'Burst Speed', value: breakdown.burstSpeed, color: 'bg-amber-500' },
+    { label: 'Session Density', value: breakdown.sessionDensity, color: 'bg-orange-500' },
+    { label: 'Repair Chains', value: breakdown.repairChains, color: 'bg-yellow-500' },
+    { label: 'Rapid Commits', value: breakdown.rapidCommits, color: 'bg-blue-500' },
   ].filter((e) => e.value > 0)
 
   const total = entries.reduce((s, e) => s + e.value, 0)
@@ -826,7 +840,7 @@ export default function Result() {
 
         {/* Score */}
         <div className="card">
-          <ScoreDisplay score={result.score} />
+          <ScoreDisplay result={result} />
         </div>
 
         {/* CTA for visitors not logged in */}
@@ -880,12 +894,13 @@ export default function Result() {
           <p className="text-gray-400 text-sm leading-relaxed">
             {t.aboutScoreText}
           </p>
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
             {[
-              { sig: t.sigCoAuthor,  pts: '+200/commit' },
-              { sig: t.sigFixFix,    pts: '+50/pair' },
-              { sig: t.sigCiFail,    pts: '+30/commit' },
-              { sig: t.sigLineVol,   pts: '+0.05/line' },
+              { sig: 'Explicit AI', pts: '+18 · cap 45' },
+              { sig: 'Burst Speed', pts: '+3/5/8 · cap 25' },
+              { sig: 'Session', pts: '+4/8 · cap 20' },
+              { sig: 'Repair Chain', pts: '+5 · cap 10' },
+              { sig: 'Rapid Commit', pts: '+4 · cap 10' },
             ].map((s) => (
               <div key={s.sig} className="bg-gray-800 rounded px-2 py-1.5 text-center">
                 <div className="text-gray-300 font-semibold">{s.pts}</div>

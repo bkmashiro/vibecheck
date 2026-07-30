@@ -116,7 +116,7 @@ app.get('/api/me/repos', async (c) => {
       `https://api.github.com/user/repos?per_page=100&page=${page}&sort=updated&affiliation=owner,collaborator,organization_member`,
       {
         headers: {
-          Authorization: `Bearer ${session.token}`,
+          Authorization: 'Bearer ' + session.token,
           Accept: 'application/vnd.github+json',
           'User-Agent': 'vibecheck/1.0',
         },
@@ -149,33 +149,46 @@ app.get('/api/analyze/:owner/:repo', async (c) => {
   const owner = c.req.param('owner')
   const repo = c.req.param('repo')
   const force = c.req.query('force') === 'true'
-  const cacheKey = `analysis:${owner}/${repo}`
+  const publicCacheKey = `analysis:v2:public:${owner}/${repo}`
 
-  // KV cache check — serve cached results to anyone, no auth needed
+  // Only explicitly public v2 results are readable without a session.
   if (!force) {
-    const cachedRaw = await c.env.KV.get(cacheKey)
+    const cachedRaw = await c.env.KV.get(publicCacheKey)
     if (cachedRaw) {
       try {
         const cached = JSON.parse(cachedRaw) as AnalysisResult
         if (Date.now() - cached.analyzedAt < 86_400_000) {
-          return c.json({ success: true, data: cached, cached: true })
+          return c.json({ success: true, data: cached, cached: true, private: false })
         }
       } catch {}
     }
   }
 
-  // Cache miss — need auth to call GitHub API
   const sessionOrResp = await requireSession(c)
   if (sessionOrResp instanceof Response) return sessionOrResp
-  const { token } = sessionOrResp
+  const { token, user } = sessionOrResp
+  const privateCacheKey = `analysis:v2:user:${user.login}:${owner}/${repo}`
+
+  if (!force) {
+    const cachedRaw = await c.env.KV.get(privateCacheKey)
+    if (cachedRaw) {
+      try {
+        const cached = JSON.parse(cachedRaw) as AnalysisResult
+        if (Date.now() - cached.analyzedAt < 86_400_000) {
+          return c.json({ success: true, data: cached, cached: true, private: true })
+        }
+      } catch {}
+    }
+  }
 
   try {
-    const { commits, rateLimit } = await fetchCommitsGraphQL(owner, repo, token)
+    const { commits, rateLimit, isPrivate } = await fetchCommitsGraphQL(owner, repo, token)
     const result = analyzeVibe(commits)
+    const cacheKey = isPrivate ? privateCacheKey : publicCacheKey
 
     await c.env.KV.put(cacheKey, JSON.stringify(result), { expirationTtl: 86400 })
 
-    return c.json({ success: true, data: result, cached: false, rateLimit })
+    return c.json({ success: true, data: result, cached: false, rateLimit, private: isPrivate })
   } catch (err: any) {
     console.error('Analysis error:', err)
 
@@ -218,9 +231,28 @@ app.post('/api/enroll', async (c) => {
     return c.json({ error: 'owner and repo are required' }, 400)
   }
 
+  // Only a maintainer can publish a repository to the public leaderboard.
+  const permissionResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+    headers: {
+      Authorization: 'Bearer ' + sessionOrResp.token,
+      Accept: 'application/vnd.github+json',
+      'User-Agent': 'vibecheck/1.0',
+    },
+  })
+  if (!permissionResponse.ok) {
+    return c.json({ error: 'Could not verify repository permissions.' }, 403)
+  }
+  const repository = await permissionResponse.json() as {
+    permissions?: { push?: boolean; maintain?: boolean; admin?: boolean }
+  }
+  if (!repository.permissions?.push && !repository.permissions?.maintain && !repository.permissions?.admin) {
+    return c.json({ error: 'Write access to the repository is required to join the leaderboard.' }, 403)
+  }
+
   // Must have a cached analysis
-  const cacheKey = `analysis:${owner}/${repo}`
-  const cachedRaw = await c.env.KV.get(cacheKey)
+  const publicCacheKey = `analysis:v2:public:${owner}/${repo}`
+  const privateCacheKey = `analysis:v2:user:${sessionOrResp.user.login}:${owner}/${repo}`
+  const cachedRaw = await c.env.KV.get(publicCacheKey) ?? await c.env.KV.get(privateCacheKey)
   if (!cachedRaw) {
     return c.json({ error: 'No cached analysis found. Please analyze the repo first.' }, 404)
   }
@@ -236,6 +268,11 @@ app.post('/api/enroll', async (c) => {
   const version = await getCurrentVersion(c.env.DB)
   if (!version) {
     return c.json({ error: 'No active scoring version found.' }, 500)
+  }
+  if (result.algorithmVersion !== version.version) {
+    return c.json({
+      error: `Scoring version is being upgraded (analysis=${result.algorithmVersion}, leaderboard=${version.version}). Please retry shortly.`,
+    }, 409)
   }
 
   try {
@@ -354,8 +391,8 @@ app.get('/badge/repo/:owner/:repo', async (c) => {
       return c.json({ schemaVersion: 1, label: 'vibe score', message: 'not ranked', color: 'lightgrey' })
     }
     const score = row.score
-    const color = score >= 2000 ? 'red' : score >= 500 ? 'orange' : score >= 100 ? 'yellow' : 'green'
-    const msg = score >= 1000 ? `${(score / 1000).toFixed(1)}k pts` : `${Math.round(score)} pts`
+    const color = score >= 80 ? 'red' : score >= 50 ? 'orange' : score >= 25 ? 'yellow' : 'green'
+    const msg = `${score.toFixed(0)} / 100`
     return c.json({ schemaVersion: 1, label: 'vibe score', message: msg, color })
   } catch (e: any) {
     return c.json({ schemaVersion: 1, label: 'vibe score', message: e.message ?? 'error', color: 'lightgrey' })

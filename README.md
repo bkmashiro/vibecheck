@@ -4,7 +4,7 @@
 
 **Does your commit history pass the vibe check?**
 
-*Analyze any GitHub repo and find out how much of it was actually written by a human.*
+*Compare repositories using auditable AI-assistance signals from Git history.*
 
 **[中文](./README.zh.md) | [日本語](./README.ja.md)**
 
@@ -22,28 +22,25 @@
 
 ## What is this?
 
-You know how some repos have 47 commits, each one adding 800 lines in under 2 minutes, with commit messages like `feat: implement complete authentication system with JWT, refresh tokens, rate limiting, and comprehensive error handling`?
+VibeCheck compares repositories using **auditable Git commit metadata**. Vibe Index v2 is normalized to **0–100**, so a large monorepo no longer wins simply by adding more lines.
 
-VibeCheck detects that.
+It separates explicit evidence—such as a known AI identity in a commit trailer—from weaker same-author timing patterns. Merge commits are excluded, evidence categories are capped, and sample confidence is reported separately.
 
-It analyzes commit history for signals that no human programmer can produce — burst speeds that exceed physical typing limits, suspicious fix-fix-fix chains, co-authorship tags, and more. Then it gives you a score. The higher the score, the more AI was involved.
-
-**No score cap.** A truly vibed-out monorepo can hit 10,000+. This is intentional. It's a leaderboard, not a pass/fail.
+This is a heuristic and conversation starter, not proof of authorship or a code-quality score.
 
 ---
 
 ## Signals
 
-| Signal | Points | Why |
-|--------|--------|-----|
-| 🚀 Burst > 500 lines/min | +40 / commit | Physically impossible for humans |
-| ⚡ Burst > 200 lines/min | +20 / commit | Extremely fast for any human |
-| 🌊 30-min window > 300 lines/min | +30 / window | Sustained AI-speed output |
-| ⏩ Large commit in < 2 min | +15 | No time to think |
-| 🔁 Fix → Fix in < 10 min | +50 / pair | Classic AI debugging loop |
-| 🤝 `Co-Authored-By:` in message | +200 / commit | You forgot to scrub it |
-| 💥 CI failure keywords | +30 / commit | `fix:`, `hotfix:`, `revert:` etc. |
-| 📏 Line volume | × 0.05 / line | Raw size matters |
+| Signal | Evidence points | Category cap |
+|---|---:|---:|
+| Explicit AI attribution | +18 / commit | 45 |
+| Same-author burst speed | +3 / +5 / +8 | 25 |
+| Rapid commit after previous same-author commit | +4 | 10 |
+| Same-author repair chain | +5 | 10 |
+| Sustained dense session | +4 / +8 | 20 |
+
+Raw evidence is transformed through a saturating curve into the 0–100 index. Full details: [HOW_IT_WORKS.md](./HOW_IT_WORKS.md).
 
 ---
 
@@ -119,7 +116,7 @@ PRs welcome. The algorithm lives in [`worker/src/analyze.ts`](./worker/src/analy
 
 **Short answer:** It depends on the *understand* : *generate* ratio.
 
-VibeCheck measures *process*, not quality. A 5,000-point repo might be a masterpiece where the author deeply understood every AI-generated line. It might also be an undebuggable pile of plausible-sounding nonsense.
+VibeCheck measures *process signals*, not quality. An 85-point repository might be a masterpiece whose author understood every AI-generated line, or an undebuggable pile of plausible-sounding nonsense.
 
 We can't tell the difference. That's intentional.
 
