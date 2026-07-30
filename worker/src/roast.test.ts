@@ -39,7 +39,7 @@ describe('roast policy', () => {
       { owner: 'o', repo: 'r', locale: 'ja', analysis },
       { reserveBudget: async () => true, runAi: async () => ({ nope: true }) },
     )
-    expect(result.source).toBe('template')
+    expect(result.source).toBe('unavailable')
     expect(result.reason).toBe('provider_error')
   })
 
@@ -48,7 +48,7 @@ describe('roast policy', () => {
       { owner: 'o', repo: 'r', locale: 'zh', analysis },
       { reserveBudget: async () => true, runAi: async () => ({ headline: '证据已经抓到了', roast: '这些代码显然是AI生成的。', punchlines: ['代码质量像随机数。'] }) },
     )
-    expect(result).toMatchObject({ source: 'template', reason: 'provider_error' })
+    expect(result).toMatchObject({ source: 'unavailable', reason: 'provider_error' })
   })
 
   it('returns validated AI copy when budget and provider succeed', async () => {

@@ -2,7 +2,7 @@ import type { D1Database } from '@cloudflare/workers-types'
 import type { AnalysisResult, ScoreBreakdown } from './analyze'
 
 export type RoastLocale = 'en' | 'zh' | 'ja'
-export type RoastSource = 'ai' | 'template'
+export type RoastSource = 'ai' | 'template' | 'unavailable'
 export type RoastReason = 'daily_cap' | 'provider_error' | null
 export type RoastCategory = keyof ScoreBreakdown | 'lowSignal'
 
@@ -49,6 +49,15 @@ const templates: Record<RoastLocale, Record<RoastCategory, RoastCopy>> = {
     rapidCommits: { headline: '鼓動ごとにcommit', roast: '思いつきが判断になる前に、すでに履歴へ永久保存されている。', punchlines: ['細かいcommit、粗い計画。'] },
     lowSignal: { headline: '責任感がありすぎて怪しい', roast: 'AIらしい混乱が足りない。丁寧に書いたか、証拠隠滅が上手いかのどちらかだ。', punchlines: ['vibe証拠不十分で無罪。'] },
   },
+}
+
+function unavailableRoast(locale: RoastLocale): RoastResult {
+  const copy: Record<RoastLocale, RoastCopy> = {
+    en: { headline: 'Roast temporarily unavailable', roast: 'The model did not return a safe, valid review. No metric template was substituted while quota remains.', punchlines: [] },
+    zh: { headline: '毒舌点评暂不可用', roast: '模型没有返回安全且有效的点评；额度尚未耗尽，因此不会拿指标模板冒充。', punchlines: [] },
+    ja: { headline: '毒舌レビューは一時停止中', roast: '安全で有効な出力が返らなかった。枠が残っているため、指標テンプレートには切り替えない。', punchlines: [] },
+  }
+  return { ...copy[locale], source: 'unavailable', reason: 'provider_error', model: null, generatedAt: Date.now() }
 }
 
 export function dominantCategory(analysis: AnalysisResult): RoastCategory {
@@ -188,7 +197,7 @@ export async function generateRoastWithFallback(
     const copy = parseRoastCopy(raw)
     if (copy && !isEvidenceGrounded(copy)) {
       console.error('Workers AI roast rejected by evidence-grounding gate.')
-      return { ...fallback, reason: 'provider_error' }
+      return unavailableRoast(input.locale)
     }
     if (!copy) {
       const envelope = raw as { response?: unknown; choices?: Array<{ finish_reason?: unknown; message?: { content?: unknown; reasoning_content?: unknown } }> }
@@ -206,12 +215,12 @@ export async function generateRoastWithFallback(
         reasoningLength: typeof choice?.message?.reasoning_content === 'string' ? choice.message.reasoning_content.length : null,
         finishReason: choice?.finish_reason ?? null,
       }))
-      return { ...fallback, reason: 'provider_error' }
+      return unavailableRoast(input.locale)
     }
     return { ...copy, source: 'ai', reason: null, model: ROAST_MODEL, generatedAt: Date.now() }
   } catch (error) {
     console.error('Workers AI roast failed:', error instanceof Error ? error.message : String(error))
-    return { ...fallback, reason: 'provider_error' }
+    return unavailableRoast(input.locale)
   }
 }
 

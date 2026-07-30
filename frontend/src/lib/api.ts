@@ -52,7 +52,7 @@ export interface RoastResult {
   headline: string
   roast: string
   punchlines: string[]
-  source: 'ai' | 'template'
+  source: 'ai' | 'template' | 'unavailable'
   reason: 'daily_cap' | 'provider_error' | null
   model: string | null
   generatedAt: number

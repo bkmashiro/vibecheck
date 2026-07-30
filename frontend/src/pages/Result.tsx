@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import Nav from '../components/Nav'
-import { t, lang, getRoast } from '../lib/i18n'
+import { t, lang } from '../lib/i18n'
 import {
   analyzeRepo,
   getRepoRoast,
@@ -145,14 +145,19 @@ function ScoreDisplay({ result, owner, repo }: { result: AnalysisResult; owner: 
     return () => { active = false }
   }, [owner, repo, result.latestSha])
 
-  const fallbackCopy = getRoast(score, 0)
+  const unavailableHeadline = lang === 'zh' ? '毒舌点评暂不可用' : lang === 'ja' ? '毒舌レビューは一時停止中' : 'Roast temporarily unavailable'
+  const unavailableCopy = lang === 'zh'
+    ? '模型服务暂时没有返回有效点评；额度尚未耗尽，所以不会拿指标模板替代。'
+    : lang === 'ja'
+      ? 'モデルから有効なレビューが返らなかった。枠が残っているため、指標テンプレートには切り替えない。'
+      : 'The model did not return a valid review. No metric template was substituted while quota remains.'
   const sourceLabel = roastResult?.source === 'ai'
     ? 'AI roast'
-    : roastResult?.reason === 'daily_cap'
+    : roastResult?.source === 'template' && roastResult.reason === 'daily_cap'
       ? 'Template · daily cap'
-      : roastResult?.source === 'template'
-        ? 'Template · provider fallback'
-        : roastFailed ? 'Local fallback' : null
+      : roastResult?.source === 'unavailable' || roastFailed
+        ? 'AI unavailable'
+        : null
 
   return (
     <div className="flex w-full min-w-0 flex-col items-center py-8">
@@ -182,7 +187,7 @@ function ScoreDisplay({ result, owner, repo }: { result: AnalysisResult; owner: 
           <>
             <div className="mb-2 flex flex-wrap items-center justify-center gap-2">
               <span className="break-words text-sm font-semibold text-gray-300">
-                {roastResult?.headline ?? (lang === 'zh' ? '本地毒舌库存' : lang === 'ja' ? 'ローカル毒舌在庫' : 'Local roast reserve')}
+                {roastResult?.headline ?? unavailableHeadline}
               </span>
               {sourceLabel && (
                 <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${roastResult?.source === 'ai' ? 'border-violet-700/60 text-violet-400' : 'border-gray-700 text-gray-500'}`}>
@@ -191,7 +196,7 @@ function ScoreDisplay({ result, owner, repo }: { result: AnalysisResult; owner: 
               )}
             </div>
             <p className="break-words text-sm leading-relaxed text-gray-400">
-              {roastResult?.roast ?? fallbackCopy}
+              {roastResult?.roast ?? unavailableCopy}
             </p>
             {roastResult?.punchlines[0] && (
               <p className="mt-2 break-words text-xs italic text-gray-600">“{roastResult.punchlines[0]}”</p>

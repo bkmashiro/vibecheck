@@ -54,12 +54,12 @@ It does **not** increase just because the score is high. A single explicitly att
 
 The roast is a presentation layer, never an input to the Vibe Index. Workers AI receives only the normalized analysis summary (score, confidence, sample counts, capped breakdown, repository name, and locale); it does not receive source code or raw commit messages.
 
-- AI roasts are cached by analysis SHA, locale, prompt version, and public/private scope.
+- AI roasts are cached by normalized analysis hash, locale, prompt version, and public/private scope.
 - Private roast cache keys include the authenticated GitHub user ID.
 - A D1 atomic reservation caps generation at **9,000 Neurons per UTC day**, leaving a 1,000-Neuron buffer below Cloudflare's 10,000-Neuron free daily allocation.
 - Each request reserves 12 Neurons before model invocation. If the reservation would cross the cap, Workers AI is not called.
-- When capped—or when the provider output fails schema and length validation—the server selects a reviewed deterministic template from the dominant evidence category and locale.
-- Responses expose `source` (`ai` or `template`) and a fallback `reason`; templates are never presented as model output.
+- Only the daily cap activates a reviewed deterministic template selected from the dominant evidence category and locale. Provider, schema, or grounding failures return a neutral unavailable state instead of substituting a template.
+- Responses expose `source` (`ai`, `template`, or `unavailable`) and a reason; templates are never presented as model output.
 
 ## Known limitations
 
